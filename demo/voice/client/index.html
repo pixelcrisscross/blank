@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ORCA Voice</title>
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+                 BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #07111f;
+    color: #eaf3ff;
+  }
+
+  body {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+
+  .card {
+    width: 100%; max-width: 520px;
+    background: linear-gradient(180deg, rgba(13, 32, 53, 0.96), rgba(8, 22, 39, 0.96));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 26px 22px 22px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+  }
+
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+
+  .logo {
+    width: 42px; height: 42px; border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 800;
+    background: linear-gradient(135deg, #00c6ff, #0066ff);
+    color: #fff;
+    box-shadow: 0 0 24px rgba(0, 145, 255, 0.35);
+  }
+
+  .title-block h1 { margin: 0; font-size: 19px; letter-spacing: 0.4px; }
+  .title-block span {
+    display: block; margin-top: 3px;
+    font-size: 11px; color: #87a0ba;
+    letter-spacing: 0.9px; text-transform: uppercase;
+  }
+
+  .status {
+    margin-top: 20px; font-size: 13px; color: #94a3b8;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: #64748b; transition: 0.25s ease;
+  }
+  .dot.live { background: #34d399; box-shadow: 0 0 12px rgba(52, 211, 153, 0.75); }
+  .dot.err  { background: #ff5f56; box-shadow: 0 0 12px rgba(255, 95, 86, 0.75); }
+
+  .buttons { display: flex; gap: 10px; margin-top: 18px; }
+
+  button {
+    flex: 1; padding: 13px 14px;
+    border: none; border-radius: 10px;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    letter-spacing: 0.3px;
+  }
+  button:hover:not(:disabled) { transform: translateY(-1px); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  #connect { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
+  #disconnect {
+    background: #0c1c31; color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .transcript {
+    margin-top: 22px; padding: 16px;
+    border-radius: 12px;
+    background: #0a182c;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    min-height: 140px; max-height: 260px;
+    overflow-y: auto; font-size: 13px; line-height: 1.65;
+  }
+  .transcript::-webkit-scrollbar { width: 8px; }
+  .transcript::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1); border-radius: 4px;
+  }
+
+  .empty { color: #6f879f; font-style: italic; }
+  .line  { padding: 4px 0; }
+
+  .label { font-weight: 700; margin-right: 6px; }
+  .label.user { color: #38bdf8; }
+  .label.bot  { color: #a78bfa; }
+
+  .footer {
+    margin-top: 14px; font-size: 10px;
+    color: #566f8a; text-align: center;
+    letter-spacing: 0.3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">
+    <div class="logo">O</div>
+    <div class="title-block">
+      <h1>ORCA Voice</h1>
+      <span>Marine Intelligence</span>
+    </div>
+  </div>
+
+  <div class="status">
+    <div id="statusDot" class="dot"></div>
+    <span id="statusText">Press Connect to begin</span>
+  </div>
+
+  <div class="buttons">
+    <button id="connect">Connect</button>
+    <button id="disconnect" disabled>Disconnect</button>
+  </div>
+
+  <div id="transcript" class="transcript">
+    <div class="empty">Transcript will appear here…</div>
+  </div>
+
+  <div class="footer">
+    Powered by Whisper · Qwen3 · Kokoro · Copernicus Marine
+  </div>
+</div>
+
+<audio id="bot-audio" autoplay playsinline></audio>
+
+<script type="module">
+import { PipecatClient } from "https://cdn.jsdelivr.net/npm/@pipecat-ai/client-js@latest/+esm";
+import { SmallWebRTCTransport } from "https://cdn.jsdelivr.net/npm/@pipecat-ai/small-webrtc-transport@latest/+esm";
+
+const statusDot     = document.getElementById("statusDot");
+const statusText    = document.getElementById("statusText");
+const transcriptEl  = document.getElementById("transcript");
+const audioEl       = document.getElementById("bot-audio");
+const connectBtn    = document.getElementById("connect");
+const disconnectBtn = document.getElementById("disconnect");
+
+let pcClient = null;
+
+function setStatus(text, kind = "idle") {
+  statusText.textContent = text;
+  statusDot.className = "dot";
+  if (kind === "live") statusDot.classList.add("live");
+  if (kind === "err")  statusDot.classList.add("err");
+}
+
+function clearEmptyState() {
+  const empty = transcriptEl.querySelector(".empty");
+  if (empty) empty.remove();
+}
+
+function addLine(kind, text) {
+  clearEmptyState();
+  const div = document.createElement("div");
+  div.className = "line";
+  div.innerHTML = `<span class="label ${kind}">${
+    kind === "user" ? "You" : "ORCA"
+  }:</span> ${escapeHtml(text)}`;
+  transcriptEl.appendChild(div);
+  transcriptEl.scrollTop = transcriptEl.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+}
+
+connectBtn.onclick = async () => {
+  setStatus("Connecting…");
+  connectBtn.disabled = true;
+  audioEl.play().catch(() => {});
+
+  pcClient = new PipecatClient({
+    transport: new SmallWebRTCTransport({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    }),
+    enableCam: false,
+    enableMic: true,
+    callbacks: {
+      onConnected: () => {
+        setStatus("Connected — speak now", "live");
+        disconnectBtn.disabled = false;
+      },
+      onDisconnected: () => {
+        setStatus("Disconnected");
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+        pcClient = null;
+      },
+      onTrackStarted: (track, participant) => {
+        if (track.kind === "audio") {
+          const stream = new MediaStream([track]);
+          audioEl.srcObject = stream;
+          audioEl.play().catch(err => console.error("[audio] playback failed:", err));
+        }
+      },
+      onTrackStopped: (track) => {
+        if (track.kind === "audio") audioEl.srcObject = null;
+      },
+      onUserTranscript: (data) => {
+        if (data.final && data.text?.trim()) addLine("user", data.text.trim());
+      },
+      onBotTranscript: (data) => {
+        if (data.text?.trim()) addLine("bot", data.text.trim());
+      },
+      onError: (e) => {
+        setStatus("Error: " + (e?.message || e), "err");
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+      },
+    },
+  });
+
+  try {
+    await pcClient.connect({ webrtcUrl: window.location.origin + "/api/offer" });
+  } catch (e) {
+    setStatus("Connection failed: " + e.message, "err");
+    connectBtn.disabled = false;
+    disconnectBtn.disabled = true;
+    pcClient = null;
+  }
+};
+
+disconnectBtn.onclick = async () => {
+  if (pcClient) {
+    try { await pcClient.disconnect(); } catch (_) {}
+    pcClient = null;
+  }
+  audioEl.srcObject = null;
+  setStatus("Disconnected");
+  connectBtn.disabled = false;
+  disconnectBtn.disabled = true;
+};
+</script>
+
+</body>
+</html>
