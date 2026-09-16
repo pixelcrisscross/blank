@@ -5,8 +5,9 @@ from agents.data_agents import (
     ResolveLocationAgent,
     CapabilityAgent,
     DynamicDataCollectionAgent,
-    ConditionalReasoningAgent,
     RiskAssessmentAgent,
+    ConditionalReasoningAgent,
+    VisualizationAgent,
     RecheckAgent,
     ReviewGateAgent,
     SimpleQueryGateAgent,
@@ -29,9 +30,13 @@ resolve_location_agent = ResolveLocationAgent(
 data_collection_agent = DynamicDataCollectionAgent(
     name="dynamic_data_collection",
     description=(
-        "Run only the data collectors the planner requested, in parallel. "
-        "Skips marine domains when the location is inland."
+        "Run only the data collectors the planner requested, in parallel."
     ),
+)
+
+risk_agent = RiskAssessmentAgent(
+    name="deterministic_risk_assessment",
+    description="Calculate a deterministic marine risk score.",
 )
 
 reasoning_agent = ConditionalReasoningAgent(
@@ -41,9 +46,9 @@ reasoning_agent = ConditionalReasoningAgent(
     ),
 )
 
-risk_agent = RiskAssessmentAgent(
-    name="deterministic_risk_assessment",
-    description="Calculate a deterministic marine risk score.",
+visualization_agent = VisualizationAgent(
+    name="visualization",
+    description="Generates an interactive map when the user asks for one.",
 )
 
 review_loop = LoopAgent(
@@ -73,16 +78,17 @@ orca_workflow = SequentialAgent(
     name="orca_marine_workflow",
     description=(
         "Agentic marine-intelligence workflow with planning, dynamic "
-        "evidence collection, conditional specialist reasoning, "
-        "iterative review, and synthesis."
+        "evidence collection, deterministic risk, conditional specialist "
+        "reasoning, optional map generation, iterative review, and synthesis."
     ),
     sub_agents=[
         planner_agent,
         capability_agent,
         resolve_location_agent,
         data_collection_agent,
-        reasoning_agent,
-        risk_agent,
+        risk_agent,             # runs BEFORE reasoning
+        reasoning_agent,        # safety_reasoner now sees the risk block
+        visualization_agent,
         review_loop,
         synthesis_agent,
     ],

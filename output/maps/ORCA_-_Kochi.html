@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_7f6d2359fb33880dbddd2c32adc58e17 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+    <div style="
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 9999;
+        background: white;
+        padding: 14px 16px;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 13px;
+        line-height: 1.6;
+        max-width: 300px;
+        color: #1f2937;
+    ">
+        <div style="font-weight: 700; font-size: 14px; margin-bottom: 8px; color: #111827;">
+            ORCA - Kochi
+        </div>
+        <div style="margin-bottom: 10px;">
+            <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">Conditions</div>
+            <b>SST</b>: 28.92 °C<br><b>Current</b>: 0.16 m/s @ 149°<br><b>Waves</b>: 0.93 m / 6.6 s<br><b>Chlorophyll</b>: — mg/m³<br><b>Wind</b>: 4.9 km/h (gust 11.2)
+        </div>
+        <div>
+            <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">Alerts</div>
+            <i style='color:#6b7280;'>No active INCOIS alerts for this region.</i>
+        </div>
+    </div>
+    
+    
+            <div class="folium-map" id="map_7f6d2359fb33880dbddd2c32adc58e17" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_7f6d2359fb33880dbddd2c32adc58e17 = L.map(
+                "map_7f6d2359fb33880dbddd2c32adc58e17",
+                {
+                    center: [10.0179, 76.1565],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 11,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+            L.control.scale().addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+
+            
+
+        
+    
+            var tile_layer_1d53c4cd84a9bb7d1d803053feca47f1 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_1d53c4cd84a9bb7d1d803053feca47f1.addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+            var marker_68e94595c95081b0d7a577df0a6f0c7b = L.marker(
+                [9.9679032, 76.2444378],
+                {
+}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+            var icon_c9f415da6912212f287e1c405d9eca92 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_69c8ad96dd21f50fd54a0c0cd9113221 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_916413f03cf7829ba19f60162af093d4 = $(`<div id="html_916413f03cf7829ba19f60162af093d4" style="width: 100.0%; height: 100.0%;"><b>Kochi</b><br>Query point</div>`)[0];
+                popup_69c8ad96dd21f50fd54a0c0cd9113221.setContent(html_916413f03cf7829ba19f60162af093d4);
+            
+        
+
+        marker_68e94595c95081b0d7a577df0a6f0c7b.bindPopup(popup_69c8ad96dd21f50fd54a0c0cd9113221)
+        ;
+
+        
+    
+    
+            marker_68e94595c95081b0d7a577df0a6f0c7b.bindTooltip(
+                `<div>
+                     Kochi
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_68e94595c95081b0d7a577df0a6f0c7b.setIcon(icon_c9f415da6912212f287e1c405d9eca92);
+            
+    
+            var marker_9f55c03fc7502bcbf2d3886193a09df8 = L.marker(
+                [10.0179, 76.1565],
+                {
+}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+            var icon_51d028097c1bb3e99deec0cd3c585d89 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "anchor",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_8fc1fa1f21fe4fc578e1f92644264239 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_72e451b8b52a8d41d3da21ff53cf2d20 = $(`<div id="html_72e451b8b52a8d41d3da21ff53cf2d20" style="width: 100.0%; height: 100.0%;"><b>nearest coast to Kochi</b><br>Marine query point<br>11.1 km from query point</div>`)[0];
+                popup_8fc1fa1f21fe4fc578e1f92644264239.setContent(html_72e451b8b52a8d41d3da21ff53cf2d20);
+            
+        
+
+        marker_9f55c03fc7502bcbf2d3886193a09df8.bindPopup(popup_8fc1fa1f21fe4fc578e1f92644264239)
+        ;
+
+        
+    
+    
+            marker_9f55c03fc7502bcbf2d3886193a09df8.bindTooltip(
+                `<div>
+                     nearest coast to Kochi
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_9f55c03fc7502bcbf2d3886193a09df8.setIcon(icon_51d028097c1bb3e99deec0cd3c585d89);
+            
+    
+            var poly_line_4a385a6373c0950ee8c63be038b2e031 = L.polyline(
+                [[9.9679032, 76.2444378], [10.0179, 76.1565]],
+                {"bubblingMouseEvents": true, "color": "gray", "dashArray": "5,5", "dashOffset": null, "fill": false, "fillColor": "gray", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.6, "smoothFactor": 1.0, "stroke": true, "weight": 1.5}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+            var circle_marker_7b1b05cbb27f7c2c825c13ad094a7c8a = L.circleMarker(
+                [9.8941, 75.7439],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+        var popup_29bf686072da8afae9bba2c4cf612108 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_0082eb90cfd7b011abe81b49c0e4a9a7 = $(`<div id="html_0082eb90cfd7b011abe81b49c0e4a9a7" style="width: 100.0%; height: 100.0%;"><b>PFZ line #1</b><br>State: KERALA<br>Distance: 47.2 km</div>`)[0];
+                popup_29bf686072da8afae9bba2c4cf612108.setContent(html_0082eb90cfd7b011abe81b49c0e4a9a7);
+            
+        
+
+        circle_marker_7b1b05cbb27f7c2c825c13ad094a7c8a.bindPopup(popup_29bf686072da8afae9bba2c4cf612108)
+        ;
+
+        
+    
+    
+            circle_marker_7b1b05cbb27f7c2c825c13ad094a7c8a.bindTooltip(
+                `<div>
+                     PFZ line (47.2 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_7bca2b4cc06bb135d3b76bde895692f1 = L.circleMarker(
+                [9.8028, 75.7556],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+        var popup_aad2858a8ded8fcd0d3e5369ea7068df = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_43758cb83b13e0ee96abf833ea297a6b = $(`<div id="html_43758cb83b13e0ee96abf833ea297a6b" style="width: 100.0%; height: 100.0%;"><b>PFZ line #2</b><br>State: KERALA<br>Distance: 50.0 km</div>`)[0];
+                popup_aad2858a8ded8fcd0d3e5369ea7068df.setContent(html_43758cb83b13e0ee96abf833ea297a6b);
+            
+        
+
+        circle_marker_7bca2b4cc06bb135d3b76bde895692f1.bindPopup(popup_aad2858a8ded8fcd0d3e5369ea7068df)
+        ;
+
+        
+    
+    
+            circle_marker_7bca2b4cc06bb135d3b76bde895692f1.bindTooltip(
+                `<div>
+                     PFZ line (50.0 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_f04a33fcff3fb597921810452ca02a94 = L.circleMarker(
+                [9.4754, 75.8832],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+        var popup_a9250dfe4f2ae9d7ddc660e697d7decc = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_a00a13bc969316a3db5e3b5c6b73015f = $(`<div id="html_a00a13bc969316a3db5e3b5c6b73015f" style="width: 100.0%; height: 100.0%;"><b>PFZ line #3</b><br>State: KERALA<br>Distance: 67.4 km</div>`)[0];
+                popup_a9250dfe4f2ae9d7ddc660e697d7decc.setContent(html_a00a13bc969316a3db5e3b5c6b73015f);
+            
+        
+
+        circle_marker_f04a33fcff3fb597921810452ca02a94.bindPopup(popup_a9250dfe4f2ae9d7ddc660e697d7decc)
+        ;
+
+        
+    
+    
+            circle_marker_f04a33fcff3fb597921810452ca02a94.bindTooltip(
+                `<div>
+                     PFZ line (67.4 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_881fb12c4bb9a1adc06c04f067208213 = L.circleMarker(
+                [10.2719, 75.5847],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+        var popup_03c3c35369d040e7a7d4aaa11335e791 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_32a932cd31be7a1cf5da213611634227 = $(`<div id="html_32a932cd31be7a1cf5da213611634227" style="width: 100.0%; height: 100.0%;"><b>PFZ line #4</b><br>State: KERALA<br>Distance: 68.7 km</div>`)[0];
+                popup_03c3c35369d040e7a7d4aaa11335e791.setContent(html_32a932cd31be7a1cf5da213611634227);
+            
+        
+
+        circle_marker_881fb12c4bb9a1adc06c04f067208213.bindPopup(popup_03c3c35369d040e7a7d4aaa11335e791)
+        ;
+
+        
+    
+    
+            circle_marker_881fb12c4bb9a1adc06c04f067208213.bindTooltip(
+                `<div>
+                     PFZ line (68.7 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_38d0c9cd5252d35328e89ad9495c7322 = L.circleMarker(
+                [10.05000019, 76.19999695],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+        var popup_aedd4e6145dbfe01949804e929561018 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_7750f6bf787ad38fad17590c3c0087fb = $(`<div id="html_7750f6bf787ad38fad17590c3c0087fb" style="width: 100.0%; height: 100.0%;"><b>Puthenkadappuram</b><br>KERALA, Ernakulam<br>Distance: 6.0 km</div>`)[0];
+                popup_aedd4e6145dbfe01949804e929561018.setContent(html_7750f6bf787ad38fad17590c3c0087fb);
+            
+        
+
+        circle_marker_38d0c9cd5252d35328e89ad9495c7322.bindPopup(popup_aedd4e6145dbfe01949804e929561018)
+        ;
+
+        
+    
+    
+            circle_marker_38d0c9cd5252d35328e89ad9495c7322.bindTooltip(
+                `<div>
+                     Puthenkadappuram
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_1001a524bf8f1c5254ccbf92805663e7 = L.circleMarker(
+                [10.02999973, 76.20999908],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+        var popup_738a8dacc4e82c07fcf1e181a493e60a = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_25a5e2d5f1130be24cda204e7550f4d3 = $(`<div id="html_25a5e2d5f1130be24cda204e7550f4d3" style="width: 100.0%; height: 100.0%;"><b>Nayarambalam</b><br>KERALA, Ernakulam<br>Distance: 6.0 km</div>`)[0];
+                popup_738a8dacc4e82c07fcf1e181a493e60a.setContent(html_25a5e2d5f1130be24cda204e7550f4d3);
+            
+        
+
+        circle_marker_1001a524bf8f1c5254ccbf92805663e7.bindPopup(popup_738a8dacc4e82c07fcf1e181a493e60a)
+        ;
+
+        
+    
+    
+            circle_marker_1001a524bf8f1c5254ccbf92805663e7.bindTooltip(
+                `<div>
+                     Nayarambalam
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_cc82cdf29b0310d801208d0eab015ed8 = L.circleMarker(
+                [10.03999996, 76.20999908],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+        var popup_42d9bf23d22af847f8bfadccc0c4591d = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_acbec382e6c312ed5cec305cb4d26ff3 = $(`<div id="html_acbec382e6c312ed5cec305cb4d26ff3" style="width: 100.0%; height: 100.0%;"><b>Narakkal</b><br>KERALA, Ernakulam<br>Distance: 6.4 km</div>`)[0];
+                popup_42d9bf23d22af847f8bfadccc0c4591d.setContent(html_acbec382e6c312ed5cec305cb4d26ff3);
+            
+        
+
+        circle_marker_cc82cdf29b0310d801208d0eab015ed8.bindPopup(popup_42d9bf23d22af847f8bfadccc0c4591d)
+        ;
+
+        
+    
+    
+            circle_marker_cc82cdf29b0310d801208d0eab015ed8.bindTooltip(
+                `<div>
+                     Narakkal
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_3183dfb0f218517e2f884fccf129aa41 = L.circleMarker(
+                [10.02000046, 76.22000122],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+        var popup_e2c37101f50fa23089db04f04a155d4e = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_f9be838c3d93c066768303cbc2a9c278 = $(`<div id="html_f9be838c3d93c066768303cbc2a9c278" style="width: 100.0%; height: 100.0%;"><b>Malipuram</b><br>KERALA, Ernakulam<br>Distance: 7.0 km</div>`)[0];
+                popup_e2c37101f50fa23089db04f04a155d4e.setContent(html_f9be838c3d93c066768303cbc2a9c278);
+            
+        
+
+        circle_marker_3183dfb0f218517e2f884fccf129aa41.bindPopup(popup_e2c37101f50fa23089db04f04a155d4e)
+        ;
+
+        
+    
+    
+            circle_marker_3183dfb0f218517e2f884fccf129aa41.bindTooltip(
+                `<div>
+                     Malipuram
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_57d91c34c129dbeb56f5039f2e8c3a34 = L.circleMarker(
+                [10.0, 76.22000122],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_7f6d2359fb33880dbddd2c32adc58e17);
+        
+    
+        var popup_acf762ad818dfc5bf307d96330c4a249 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_8c0af44300685c0a33281ae2794200c1 = $(`<div id="html_8c0af44300685c0a33281ae2794200c1" style="width: 100.0%; height: 100.0%;"><b>Ernakulam</b><br>KERALA, Ernakulam<br>Distance: 7.2 km</div>`)[0];
+                popup_acf762ad818dfc5bf307d96330c4a249.setContent(html_8c0af44300685c0a33281ae2794200c1);
+            
+        
+
+        circle_marker_57d91c34c129dbeb56f5039f2e8c3a34.bindPopup(popup_acf762ad818dfc5bf307d96330c4a249)
+        ;
+
+        
+    
+    
+            circle_marker_57d91c34c129dbeb56f5039f2e8c3a34.bindTooltip(
+                `<div>
+                     Ernakulam
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+</script>
+</html>

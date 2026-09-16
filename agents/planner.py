@@ -19,7 +19,8 @@ Do NOT write anything before or after the JSON.
 Return ONLY a single JSON object (no prose, no markdown fences) with these keys:
 
 - intent         : one of "marine_observations" | "marine_safety" |
-                   "fishery" | "weather" | "tourism" | "combined" | "meta"
+                   "fishery" | "weather" | "tourism" | "combined" |
+                   "visualization" | "meta"
 - location       : string or null
 - coordinates    : {"latitude": float, "longitude": float} or null
 - time_request   : "now" | "today" | "tonight" | "tomorrow" |
@@ -28,7 +29,7 @@ Return ONLY a single JSON object (no prose, no markdown fences) with these keys:
                    "ocean", "weather", "geofence", "pfz", "coral",
                    "tides", "biolum", "algal_bloom", "imd",
                    "hwassa", "cyclone", "tsunami", "osf_freshness",
-                   "currents"
+                   "currents", "visualize"
 - needs_safety   : true/false
 - needs_fishery  : true/false
 - needs_tourism  : true/false
@@ -39,6 +40,19 @@ META-QUERY RULE (highest priority):
   set intent to "meta", domains_needed to [], location to null,
   coordinates to null, time_request to null, and all needs_* to false.
 
+VISUALIZATION RULE (strict):
+- Include "visualize" ONLY when the user explicitly asks for a visual,
+  map, plot, graph, chart, or drawing. Explicit triggers:
+  "map", "show me a map", "on a map", "visualize", "visualization",
+  "plot", "graph", "chart", "draw", "picture", "see it on a map".
+- If the user asks "where is X" without mentioning map/plot/visualize,
+  DO NOT include visualize.
+- When "visualize" is included, also include the domains relevant to
+  the underlying question so the map has data to render.
+- Set intent to "visualization" when the primary request is a visual.
+  If the user asked for both data and a map, set intent to "combined"
+  and include "visualize" in domains_needed.
+
 ALL-INFORMATION RULE:
 - If the user asks for "all information", "everything", "full data",
   "complete picture", or similar about a coastal location:
@@ -47,50 +61,54 @@ ALL-INFORMATION RULE:
   set domains_needed to the full set:
   ["ocean", "weather", "imd", "hwassa", "currents", "tsunami",
    "pfz", "coral", "tides", "biolum", "algal_bloom", "cyclone"]
-- Do NOT narrow this to just safety. The user asked for everything.
+- Do NOT narrow this to just safety.
 
 TEMPERATURE RULE:
-- "SST", "sea temperature", "ocean temperature", "sea surface":
-  → "ocean" (+ "imd" for Indian coastal locations).
-- "temperature", "how hot", "how cold", "air temperature":
-  → "weather". Never assume a plain "temperature" query is marine.
-  Only include "ocean" if "sea" or "ocean" or "SST" is explicitly
-  mentioned.
-- If unsure whether a "temperature" query is marine or atmospheric,
-  include BOTH "weather" and "ocean".
+- "SST", "sea temperature", "ocean temperature", "sea surface" → "ocean".
+- "temperature", "how hot", "air temperature" → "weather".
+- If unsure, include BOTH "weather" and "ocean".
 
 INLAND RULE:
-- If the user names a place that is clearly inland (not on the coast),
-  set domains_needed to ["weather"] only.
+- If the user names a place that is clearly inland, set domains_needed
+  to ["weather"] only.
 - If the location is not given at all, leave location and coordinates null.
 
-IMD RULE (Indian coastal waters):
-- If the location is on the Indian coast AND the user asks about
-  safety, boating, fishing, port operations, or "current conditions",
-  include "imd" in domains_needed.
+IMD RULE:
+- For Indian coastal locations with safety/fishing/port questions,
+  include "imd".
 - Never include "imd" for inland locations.
 
-INCOIS HAZARD RULES (highest operational priority):
-- For ANY Indian coastal location where the user asks about safety,
-  fishing, boating, swimming, diving, or "current conditions", ALWAYS
-  include: "hwassa" and "tsunami".
-- If the user asks about boating, swimming, diving → include "currents".
-- If the user asks about cyclones, storms, or severe weather → include "cyclone".
-- If the user asks about data freshness → include "osf_freshness".
+INCOIS HAZARD RULES:
+- For ANY Indian coastal location asking about safety, fishing,
+  boating, swimming, diving, or "current conditions": include
+  "hwassa" and "tsunami".
+- Boating/swimming/diving → also include "currents".
+- Cyclones/storms/severe weather → include "cyclone".
+- Data freshness → include "osf_freshness".
 
 DOMAIN RULES:
 - "where can I fish" or PFZ → include "pfz", needs_fishery=true.
 - tides, oysters, "best time to fish" → include "tides".
 - coral reefs, bleaching → include "coral".
-- bioluminescence, "glowing water" → include "biolum", needs_tourism=true.
+- bioluminescence → include "biolum", needs_tourism=true.
 - algal bloom, "green water" → include "algal_bloom", needs_tourism=true.
-- Broad safety or trip-planning question → include "ocean", "weather",
-  "geofence", "tides", "imd", "hwassa", "tsunami".
 - Current marine observation → "ocean".
 - Current weather → "weather".
 
 TIME:
 - For future questions, keep the future phrase in time_request.
+
+Example output for "show me a map of Varkala":
+{
+  "intent": "visualization",
+  "location": "Varkala",
+  "coordinates": null,
+  "time_request": "now",
+  "domains_needed": ["ocean", "weather", "hwassa", "currents", "pfz", "visualize"],
+  "needs_safety": false,
+  "needs_fishery": true,
+  "needs_tourism": false
+}
 
 Example output for "all information you can give w.r.t Varkala":
 {
@@ -104,18 +122,6 @@ Example output for "all information you can give w.r.t Varkala":
   "needs_safety": true,
   "needs_fishery": true,
   "needs_tourism": true
-}
-
-Example output for "Where can I fish near Goa tonight?":
-{
-  "intent": "fishery",
-  "location": "Goa",
-  "coordinates": null,
-  "time_request": "tonight",
-  "domains_needed": ["ocean", "pfz", "tides", "imd", "hwassa", "tsunami"],
-  "needs_safety": false,
-  "needs_fishery": true,
-  "needs_tourism": false
 }
 
 Example output for "what can you do?":

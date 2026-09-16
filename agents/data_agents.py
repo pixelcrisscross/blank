@@ -29,6 +29,7 @@ from tools.cyclone_service import get_cyclone_alerts
 from tools.tsunami_service import get_tsunami_bulletins
 from tools.osf_service import get_osf_freshness
 from tools.currents_service import get_ocean_current_alerts
+from tools.visualization import create_marine_map
 
 
 def _json_block(payload) -> str:
@@ -39,7 +40,7 @@ def _json_block(payload) -> str:
 
 
 def _r(value, places: int = 2):
-    """Round a value to `places` decimals. Pass through None / non-numeric."""
+    """Round to N places. Pass through None / non-numeric unchanged."""
     try:
         if value is None:
             return None
@@ -56,9 +57,7 @@ def _extract_location_from_plan(plan_raw) -> tuple[str, dict | None]:
       - Clean JSON
       - JSON wrapped in ```json fences
       - JSON with leading prose ("Here is the plan: {...}")
-      - Completely non-JSON responses (returns the raw text as a
-        fallback hint so the geocoder can at least try to match a
-        place name)
+      - Completely non-JSON responses
     """
     text = plan_raw if isinstance(plan_raw, str) else str(plan_raw)
     text = text.strip()
@@ -126,14 +125,11 @@ def _fmt_weather(r: dict) -> str:
         f"- Pressure: {_r(cur.get('pressure_msl'), 0)} hPa",
     ]
 
-    # Include a small hourly forecast slice so reasoners have real
-    # forecast data instead of inventing it.
     times = hourly.get("time") or []
     if isinstance(times, list) and times:
         n = min(6, len(times))
         lines.append("- Hourly forecast (next few hours):")
         for i in range(n):
-            t = times[i]
             w_list = hourly.get("wind_speed_10m") or []
             g_list = hourly.get("wind_gusts_10m") or []
             p_list = hourly.get("precipitation") or []
@@ -143,7 +139,7 @@ def _fmt_weather(r: dict) -> str:
             p = p_list[i] if i < len(p_list) else None
             c = c_list[i] if i < len(c_list) else None
             lines.append(
-                f"  {t} | wind {_r(w, 1)} | gust {_r(g, 1)} | "
+                f"  {times[i]} | wind {_r(w, 1)} | gust {_r(g, 1)} | "
                 f"precip {_r(p, 1)} | code {c}"
             )
 
@@ -271,6 +267,8 @@ def _fmt_imd(r: dict) -> str:
 
 def _fmt_hwassa(r: dict) -> str:
     status = r.get("status")
+    if status == "NO_STATE_HINT":
+        return "INCOIS HWA/SSA: no state hint — skipped."
     if status != "OK":
         return f"INCOIS HWA/SSA: {status} — {r.get('error', '')}"
 
@@ -340,6 +338,8 @@ def _fmt_osf(r: dict) -> str:
 
 def _fmt_currents(r: dict) -> str:
     status = r.get("status")
+    if status == "NO_STATE_HINT":
+        return "INCOIS Ocean Currents: no state hint — skipped."
     if status != "OK":
         return f"INCOIS Ocean Currents: {status} — {r.get('error', '')}"
 
@@ -354,6 +354,17 @@ def _fmt_currents(r: dict) -> str:
         f"- Issued: {r.get('issue_date')}\n"
         f"- Message: {r.get('message')}\n"
         f"- Note: {r.get('note')}"
+    )
+
+
+def _fmt_visualize(r: dict) -> str:
+    status = r.get("status")
+    if status != "OK":
+        return f"Map generation: {status} — {r.get('error', '')}"
+    return (
+        f"Interactive map generated.\n"
+        f"- File: {r.get('map_path')}\n"
+        f"- Open this file in a browser to explore."
     )
 
 
@@ -372,6 +383,7 @@ _SUMMARISERS = {
     "tsunami": _fmt_tsunami,
     "osf_freshness": _fmt_osf,
     "currents": _fmt_currents,
+    "visualize": _fmt_visualize,
 }
 
 
@@ -380,14 +392,6 @@ _SUMMARISERS = {
 # ═════════════════════════════════════════════════════════════════════
 
 class ResolveLocationAgent(BaseAgent):
-    """
-    Resolve the location and compute the marine query point.
-
-    Writes:
-      - orca_location        : the raw query point
-      - orca_marine_location : the point marine tools should query.
-    """
-
     async def _run_async_impl(self, ctx: InvocationContext):
         plan_raw = ctx.session.state.get(key("plan"), "")
         location_hint, coords = _extract_location_from_plan(plan_raw)
@@ -517,17 +521,14 @@ ORCA — marine intelligence platform. Capabilities:
 - INCOIS Cyclone: storm surge alerts
 - Safety (deterministic): risk score with hard blockers
 - Location resolution: place names or explicit coordinates
-
-Note: marine domains use the nearest coast to the query location when
-the query is inland (up to 200 km). Beyond that, only weather applies.
+- Interactive maps: ask for "a map of <place>" to generate one
 
 Example questions:
 - "What is the SST off Goa right now?"
 - "Where can I fish near Kochi tomorrow?"
-- "Are there coral reefs near Lakshadweep?"
-- "What's the tide at Mumbai tonight?"
+- "Show me a map of Varkala"
+- "All information about Mangalore"
 - "Are there any port warnings off Visakhapatnam?"
-- "All information about Varkala"
 """
         yield Event(
             invocation_id=ctx.invocation_id,
@@ -576,7 +577,7 @@ class DynamicDataCollectionAgent(BaseAgent):
         if not isinstance(domains, list):
             domains = []
         if not domains:
-            domains = list(_SUMMARISERS.keys())
+            domains = [d for d in _SUMMARISERS.keys() if d != "visualize"]
 
         loc = ctx.session.state.get(key("location"), {})
         marine_loc = ctx.session.state.get(key("marine_location"))
@@ -586,6 +587,8 @@ class DynamicDataCollectionAgent(BaseAgent):
         filtered = []
         skipped_inland = []
         for d in domains:
+            if d == "visualize":
+                continue
             if d in self.MARINE_DOMAINS and not marine_available:
                 skipped_inland.append(d)
                 ctx.session.state[key(d)] = {
@@ -718,8 +721,7 @@ class DynamicDataCollectionAgent(BaseAgent):
                         text=(
                             f"{d.upper()} DATA: SKIPPED — location is deep "
                             f"inland (no coast within 200 km). No data was "
-                            f"collected. Do not provide any values for this "
-                            f"domain."
+                            f"collected."
                         )
                     )],
                 ),
@@ -741,10 +743,6 @@ class DynamicDataCollectionAgent(BaseAgent):
 # ═════════════════════════════════════════════════════════════════════
 
 class ConditionalReasoningAgent(BaseAgent):
-    """
-    Run only the specialist reasoners whose domains were collected.
-    """
-
     async def _run_async_impl(self, ctx: InvocationContext):
         from agents.reasoning_agents import (
             ocean_reasoner, weather_reasoner, fishery_reasoner,
@@ -832,6 +830,125 @@ class ConditionalReasoningAgent(BaseAgent):
 
 
 # ═════════════════════════════════════════════════════════════════════
+# VISUALIZATION
+# ═════════════════════════════════════════════════════════════════════
+
+class VisualizationAgent(BaseAgent):
+    """
+    Generate a Folium map HTML file when the user explicitly asks for one.
+
+    Fires when EITHER:
+      - the plan intent is "visualization", OR
+      - "visualize" is in domains_needed
+
+    This double check compensates for small models that set the intent
+    correctly but forget to add the domain to the list.
+    """
+
+    async def _run_async_impl(self, ctx: InvocationContext):
+        plan_raw = ctx.session.state.get(key("plan"), "{}")
+        try:
+            plan = json.loads(plan_raw) if isinstance(plan_raw, str) else plan_raw
+        except Exception:
+            plan = {}
+
+        if not isinstance(plan, dict):
+            plan = {}
+
+        domains = (
+            plan.get("domains_needed")
+            or plan.get("domains")
+            or []
+        )
+        if not isinstance(domains, list):
+            domains = []
+
+        wants_map = (
+            plan.get("intent") == "visualization"
+            or "visualize" in domains
+        )
+
+        if not wants_map:
+            yield Event(
+                invocation_id=ctx.invocation_id,
+                author=self.name,
+                content=types.Content(
+                    role="model",
+                    parts=[types.Part(text="No map requested; skipping.")],
+                ),
+            )
+            return
+
+        loc = ctx.session.state.get(key("location"), {})
+        marine_loc = ctx.session.state.get(key("marine_location"))
+
+        if loc.get("status") != "FOUND":
+            result = {"status": "BLOCKED", "error": "No resolved location."}
+            ctx.session.state[key("visualize")] = result
+            yield Event(
+                invocation_id=ctx.invocation_id,
+                author=f"{self.name}_visualize",
+                content=types.Content(role="model", parts=[types.Part(
+                    text=_fmt_visualize(result)
+                )]),
+            )
+            return
+
+        query_lat = float(loc["latitude"])
+        query_lon = float(loc["longitude"])
+        query_name = str(loc.get("name") or "Query point")
+
+        if marine_loc is not None:
+            marine_lat = float(marine_loc["latitude"])
+            marine_lon = float(marine_loc["longitude"])
+            distance_km = marine_loc.get("distance_from_query_km")
+            marine_name = str(marine_loc.get("name") or "Marine query point")
+        else:
+            marine_lat = None
+            marine_lon = None
+            distance_km = None
+            marine_name = "Marine query point"
+
+        ocean = ctx.session.state.get(key("ocean"), {})
+        weather = ctx.session.state.get(key("weather"), {})
+        pfz = ctx.session.state.get(key("pfz"), {})
+        hwassa = ctx.session.state.get(key("hwassa"), {})
+        currents = ctx.session.state.get(key("currents"), {})
+        imd = ctx.session.state.get(key("imd"), {})
+
+        try:
+            result = await asyncio.to_thread(
+                create_marine_map,
+                query_lat=query_lat,
+                query_lon=query_lon,
+                query_name=query_name,
+                marine_lat=marine_lat,
+                marine_lon=marine_lon,
+                marine_name=marine_name,
+                distance_km=distance_km,
+                ocean=ocean,
+                weather=weather,
+                pfz=pfz,
+                hwassa=hwassa,
+                currents=currents,
+                imd=imd,
+                label=f"ORCA - {query_name}",
+            )
+        except Exception as exc:
+            result = {"status": "ERROR", "error": str(exc)}
+
+        ctx.session.state[key("visualize")] = result
+
+        yield Event(
+            invocation_id=ctx.invocation_id,
+            author=f"{self.name}_visualize",
+            content=types.Content(role="model", parts=[types.Part(
+                text=_fmt_visualize(result)
+            )]),
+        )
+
+
+# ═════════════════════════════════════════════════════════════════════
 # RISK ASSESSMENT
 # ═════════════════════════════════════════════════════════════════════
 
@@ -909,8 +1026,7 @@ class SimpleQueryGateAgent(BaseAgent):
 
         if len(domains) <= 1:
             ctx.session.state[key("review")] = (
-                "PASS\n"
-                "Single-domain query — evidence is sufficient."
+                "PASS\nSingle-domain query — evidence is sufficient."
             )
             yield Event(
                 invocation_id=ctx.invocation_id,
@@ -918,10 +1034,7 @@ class SimpleQueryGateAgent(BaseAgent):
                 content=types.Content(
                     role="model",
                     parts=[types.Part(
-                        text=(
-                            f"Simple query ({len(domains)} domain) — "
-                            f"auto-PASS, exiting review loop."
-                        )
+                        text=f"Simple query ({len(domains)} domain) — auto-PASS."
                     )],
                 ),
                 actions=__import__(
@@ -936,10 +1049,7 @@ class SimpleQueryGateAgent(BaseAgent):
             content=types.Content(
                 role="model",
                 parts=[types.Part(
-                    text=(
-                        f"Complex query ({len(domains)} domains) — "
-                        f"proceeding with review loop."
-                    )
+                    text=f"Complex query ({len(domains)} domains) — review loop."
                 )],
             ),
         )

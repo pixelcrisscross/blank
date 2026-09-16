@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_ee1bba9fd5e7b9bb4748d3a88d6cb289 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+    <div style="
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 9999;
+        background: white;
+        padding: 14px 16px;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 13px;
+        line-height: 1.6;
+        max-width: 300px;
+        color: #1f2937;
+    ">
+        <div style="font-weight: 700; font-size: 14px; margin-bottom: 8px; color: #111827;">
+            ORCA - Goa
+        </div>
+        <div style="margin-bottom: 10px;">
+            <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">Conditions</div>
+            <b>SST</b>: 29.37 °C<br><b>Current</b>: 0.08 m/s @ 130°<br><b>Waves</b>: 1.16 m / 5.3 s<br><b>Chlorophyll</b>: — mg/m³<br><b>Wind</b>: 2.2 km/h (gust 4.7)
+        </div>
+        <div>
+            <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">Alerts</div>
+            <i style='color:#6b7280;'>No active INCOIS alerts for this region.</i>
+        </div>
+    </div>
+    
+    
+            <div class="folium-map" id="map_ee1bba9fd5e7b9bb4748d3a88d6cb289" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_ee1bba9fd5e7b9bb4748d3a88d6cb289 = L.map(
+                "map_ee1bba9fd5e7b9bb4748d3a88d6cb289",
+                {
+                    center: [15.3005, 73.8782],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 11,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+            L.control.scale().addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+
+            
+
+        
+    
+            var tile_layer_9237208501c9a93d99c800d983ab70c4 = L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 20,
+  "maxNativeZoom": 20,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+  "subdomains": "abcd",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_9237208501c9a93d99c800d983ab70c4.addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+            var marker_a18c3fc44eaf545a903af05782701d50 = L.marker(
+                [15.3004543, 74.0855134],
+                {
+}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+            var icon_064143f3872cbd6ed20500c91cf6e386 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_fd89fa87ce755b30d1f796fed7ea8a00 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_f6c3b95f5fa103ab010a570c19df7b2a = $(`<div id="html_f6c3b95f5fa103ab010a570c19df7b2a" style="width: 100.0%; height: 100.0%;"><b>Goa</b><br>Query point</div>`)[0];
+                popup_fd89fa87ce755b30d1f796fed7ea8a00.setContent(html_f6c3b95f5fa103ab010a570c19df7b2a);
+            
+        
+
+        marker_a18c3fc44eaf545a903af05782701d50.bindPopup(popup_fd89fa87ce755b30d1f796fed7ea8a00)
+        ;
+
+        
+    
+    
+            marker_a18c3fc44eaf545a903af05782701d50.bindTooltip(
+                `<div>
+                     Goa
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_a18c3fc44eaf545a903af05782701d50.setIcon(icon_064143f3872cbd6ed20500c91cf6e386);
+            
+    
+            var marker_2924efbb0cbe530827f61b48c3cd296f = L.marker(
+                [15.3005, 73.8782],
+                {
+}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+            var icon_f1a82b949a94914cfb202576fc07cb28 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "anchor",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_5e0cb2137a3abf7ec270a8f198df9409 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_232497a5647736a2e92e5b7642f6bcac = $(`<div id="html_232497a5647736a2e92e5b7642f6bcac" style="width: 100.0%; height: 100.0%;"><b>nearest coast to Goa</b><br>Marine query point<br>22.2 km from query point</div>`)[0];
+                popup_5e0cb2137a3abf7ec270a8f198df9409.setContent(html_232497a5647736a2e92e5b7642f6bcac);
+            
+        
+
+        marker_2924efbb0cbe530827f61b48c3cd296f.bindPopup(popup_5e0cb2137a3abf7ec270a8f198df9409)
+        ;
+
+        
+    
+    
+            marker_2924efbb0cbe530827f61b48c3cd296f.bindTooltip(
+                `<div>
+                     nearest coast to Goa
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_2924efbb0cbe530827f61b48c3cd296f.setIcon(icon_f1a82b949a94914cfb202576fc07cb28);
+            
+    
+            var poly_line_e757aaaf35f9bc8332f29d52b09fd170 = L.polyline(
+                [[15.3004543, 74.0855134], [15.3005, 73.8782]],
+                {"bubblingMouseEvents": true, "color": "gray", "dashArray": "5,5", "dashOffset": null, "fill": false, "fillColor": "gray", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.6, "smoothFactor": 1.0, "stroke": true, "weight": 1.5}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+            var circle_marker_4b8c1db0cc244b345a231b6bf0395e95 = L.circleMarker(
+                [15.2059, 73.4368],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_dea3c507ce9fdc24de24bc3923c4b4ff = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_0c883703d5fb53ab6980b8431e4eaf0a = $(`<div id="html_0c883703d5fb53ab6980b8431e4eaf0a" style="width: 100.0%; height: 100.0%;"><b>PFZ line #1</b><br>State: GOA<br>Distance: 48.5 km</div>`)[0];
+                popup_dea3c507ce9fdc24de24bc3923c4b4ff.setContent(html_0c883703d5fb53ab6980b8431e4eaf0a);
+            
+        
+
+        circle_marker_4b8c1db0cc244b345a231b6bf0395e95.bindPopup(popup_dea3c507ce9fdc24de24bc3923c4b4ff)
+        ;
+
+        
+    
+    
+            circle_marker_4b8c1db0cc244b345a231b6bf0395e95.bindTooltip(
+                `<div>
+                     PFZ line (48.5 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_e61bc2e78ab6545fe9bcfb8410da9ce0 = L.circleMarker(
+                [15.1239, 73.4489],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_74a3078f8bb1e258e875d0fd231b19b8 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_897b44b8bf0dddcf96c992037198f2e6 = $(`<div id="html_897b44b8bf0dddcf96c992037198f2e6" style="width: 100.0%; height: 100.0%;"><b>PFZ line #2</b><br>State: GOA<br>Distance: 50.1 km</div>`)[0];
+                popup_74a3078f8bb1e258e875d0fd231b19b8.setContent(html_897b44b8bf0dddcf96c992037198f2e6);
+            
+        
+
+        circle_marker_e61bc2e78ab6545fe9bcfb8410da9ce0.bindPopup(popup_74a3078f8bb1e258e875d0fd231b19b8)
+        ;
+
+        
+    
+    
+            circle_marker_e61bc2e78ab6545fe9bcfb8410da9ce0.bindTooltip(
+                `<div>
+                     PFZ line (50.1 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_eeabe8e94e43bbbb3f607779a4b24d7f = L.circleMarker(
+                [15.4648, 73.2997],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_68369ae9dc4a7bfb706a56b9ac2ad549 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_bbbb53ae14061d9ce1c2b9c948d160ee = $(`<div id="html_bbbb53ae14061d9ce1c2b9c948d160ee" style="width: 100.0%; height: 100.0%;"><b>PFZ line #3</b><br>State: GOA<br>Distance: 64.7 km</div>`)[0];
+                popup_68369ae9dc4a7bfb706a56b9ac2ad549.setContent(html_bbbb53ae14061d9ce1c2b9c948d160ee);
+            
+        
+
+        circle_marker_eeabe8e94e43bbbb3f607779a4b24d7f.bindPopup(popup_68369ae9dc4a7bfb706a56b9ac2ad549)
+        ;
+
+        
+    
+    
+            circle_marker_eeabe8e94e43bbbb3f607779a4b24d7f.bindTooltip(
+                `<div>
+                     PFZ line (64.7 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_ab02a3ee7dffd4b3918f43becfae3c45 = L.circleMarker(
+                [14.9157, 73.3852],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_119cb33b2fd410d908b34bec7ab02368 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_0d1a8997dfa20db8278cf42f77486ed5 = $(`<div id="html_0d1a8997dfa20db8278cf42f77486ed5" style="width: 100.0%; height: 100.0%;"><b>PFZ line #4</b><br>State: KARNATAKA<br>Distance: 68.1 km</div>`)[0];
+                popup_119cb33b2fd410d908b34bec7ab02368.setContent(html_0d1a8997dfa20db8278cf42f77486ed5);
+            
+        
+
+        circle_marker_ab02a3ee7dffd4b3918f43becfae3c45.bindPopup(popup_119cb33b2fd410d908b34bec7ab02368)
+        ;
+
+        
+    
+    
+            circle_marker_ab02a3ee7dffd4b3918f43becfae3c45.bindTooltip(
+                `<div>
+                     PFZ line (68.1 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_d55590e1f6b94d7f38a25d48bbd74d1f = L.circleMarker(
+                [15.8127, 73.2959],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_79f6d5a5d5431919b7d367a76ccb5fac = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_f30c8ccc83cd83f0ac8b42ee1573b5ec = $(`<div id="html_f30c8ccc83cd83f0ac8b42ee1573b5ec" style="width: 100.0%; height: 100.0%;"><b>PFZ line #5</b><br>State: MAHARASHTRA<br>Distance: 84.5 km</div>`)[0];
+                popup_79f6d5a5d5431919b7d367a76ccb5fac.setContent(html_f30c8ccc83cd83f0ac8b42ee1573b5ec);
+            
+        
+
+        circle_marker_d55590e1f6b94d7f38a25d48bbd74d1f.bindPopup(popup_79f6d5a5d5431919b7d367a76ccb5fac)
+        ;
+
+        
+    
+    
+            circle_marker_d55590e1f6b94d7f38a25d48bbd74d1f.bindTooltip(
+                `<div>
+                     PFZ line (84.5 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_799c2735ead057e40cfafd9959d725db = L.circleMarker(
+                [15.31000042, 73.90000153],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_45c2d68cdd136d6ef946cb0380268cb5 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_32ca9de420f69d03c80c789e6221f5e3 = $(`<div id="html_32ca9de420f69d03c80c789e6221f5e3" style="width: 100.0%; height: 100.0%;"><b>Majorde</b><br>GOA, South Goa<br>Distance: 2.6 km</div>`)[0];
+                popup_45c2d68cdd136d6ef946cb0380268cb5.setContent(html_32ca9de420f69d03c80c789e6221f5e3);
+            
+        
+
+        circle_marker_799c2735ead057e40cfafd9959d725db.bindPopup(popup_45c2d68cdd136d6ef946cb0380268cb5)
+        ;
+
+        
+    
+    
+            circle_marker_799c2735ead057e40cfafd9959d725db.bindTooltip(
+                `<div>
+                     Majorde
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_9b6830fa22a629073a1aec291ff45a46 = L.circleMarker(
+                [15.21000004, 73.94000244],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_f420abe92d0b36f7a2627cfa06b976df = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_665a84ab384c0cbdee3bf5f7d934de38 = $(`<div id="html_665a84ab384c0cbdee3bf5f7d934de38" style="width: 100.0%; height: 100.0%;"><b>Fatarde</b><br>GOA, South Goa<br>Distance: 12.1 km</div>`)[0];
+                popup_f420abe92d0b36f7a2627cfa06b976df.setContent(html_665a84ab384c0cbdee3bf5f7d934de38);
+            
+        
+
+        circle_marker_9b6830fa22a629073a1aec291ff45a46.bindPopup(popup_f420abe92d0b36f7a2627cfa06b976df)
+        ;
+
+        
+    
+    
+            circle_marker_9b6830fa22a629073a1aec291ff45a46.bindTooltip(
+                `<div>
+                     Fatarde
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_eb689e6ca32d3c194f5e89e139f38b94 = L.circleMarker(
+                [15.35000038, 73.76000214],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_0d5b179d91d753a220df4ef925c2aa9d = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_c5f13b749891db4f936f3647205b225b = $(`<div id="html_c5f13b749891db4f936f3647205b225b" style="width: 100.0%; height: 100.0%;"><b>Santerem Pt (Vasco)</b><br>GOA, South Goa<br>Distance: 13.8 km</div>`)[0];
+                popup_0d5b179d91d753a220df4ef925c2aa9d.setContent(html_c5f13b749891db4f936f3647205b225b);
+            
+        
+
+        circle_marker_eb689e6ca32d3c194f5e89e139f38b94.bindPopup(popup_0d5b179d91d753a220df4ef925c2aa9d)
+        ;
+
+        
+    
+    
+            circle_marker_eb689e6ca32d3c194f5e89e139f38b94.bindTooltip(
+                `<div>
+                     Santerem Pt (Vasco)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_03119dc1b7fd5c00e2096abd28526e75 = L.circleMarker(
+                [15.14000034, 73.94000244],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_28212b1fa9b5b1940b182f378148bab0 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_837d42ae3e1668c913f35033e2b0c00a = $(`<div id="html_837d42ae3e1668c913f35033e2b0c00a" style="width: 100.0%; height: 100.0%;"><b>Betul</b><br>GOA, South Goa<br>Distance: 19.0 km</div>`)[0];
+                popup_28212b1fa9b5b1940b182f378148bab0.setContent(html_837d42ae3e1668c913f35033e2b0c00a);
+            
+        
+
+        circle_marker_03119dc1b7fd5c00e2096abd28526e75.bindPopup(popup_28212b1fa9b5b1940b182f378148bab0)
+        ;
+
+        
+    
+    
+            circle_marker_03119dc1b7fd5c00e2096abd28526e75.bindTooltip(
+                `<div>
+                     Betul
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_8ac3d59cfcd9a54c9d06450ae472f00a = L.circleMarker(
+                [15.48999977, 73.81999969],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_ee1bba9fd5e7b9bb4748d3a88d6cb289);
+        
+    
+        var popup_ff60e5352ad1ffd4da7b4d81149459db = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_404b2b7d450be147ed8154f1fd50304f = $(`<div id="html_404b2b7d450be147ed8154f1fd50304f" style="width: 100.0%; height: 100.0%;"><b>Panaji (Malim)</b><br>GOA, North Goa<br>Distance: 22.0 km</div>`)[0];
+                popup_ff60e5352ad1ffd4da7b4d81149459db.setContent(html_404b2b7d450be147ed8154f1fd50304f);
+            
+        
+
+        circle_marker_8ac3d59cfcd9a54c9d06450ae472f00a.bindPopup(popup_ff60e5352ad1ffd4da7b4d81149459db)
+        ;
+
+        
+    
+    
+            circle_marker_8ac3d59cfcd9a54c9d06450ae472f00a.bindTooltip(
+                `<div>
+                     Panaji (Malim)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+</script>
+</html>

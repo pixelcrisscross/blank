@@ -27,6 +27,9 @@ STATE_KEYS = {
     # Risk
     "risk": "orca_risk_assessment",
 
+    # Visualization
+    "visualize": "orca_visualize_data",
+
     # Reasoning blocks
     "ocean_reasoning": "orca_ocean_reasoning",
     "weather_reasoning": "orca_weather_reasoning",

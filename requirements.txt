@@ -16,3 +16,5 @@ kokoro-onnx
 soundfile
 loguru
 ollama
+global-land-mask
+folium
