@@ -12,7 +12,7 @@ from google.genai import types
 from state.schemas import key
 
 from tools.location import resolve_location_query
-from tools.coastal_check import is_coastal
+from tools.nearest_coast import nearest_coast_info
 from tools.copernicus_service import get_copernicus_marine_snapshot
 from tools.weather_service import get_weather_conditions
 from tools.geofence import check_geofence
@@ -23,6 +23,11 @@ from tools.tide_service import get_tide_prediction
 from tools.bioluminescence import get_bioluminescence_forecast
 from tools.algal_bloom import get_algal_bloom_risk
 from tools.imd_service import get_imd_coastal_bulletin
+from tools.hwassa_service import get_hwassa_alerts
+from tools.cyclone_service import get_cyclone_alerts
+from tools.tsunami_service import get_tsunami_bulletins
+from tools.osf_service import get_osf_freshness
+from tools.currents_service import get_ocean_current_alerts
 
 
 def _json_block(payload) -> str:
@@ -155,7 +160,7 @@ def _fmt_imd(r: dict) -> str:
     if status == "PARSE_FAILED":
         return (
             "IMD coastal bulletin: PARSE_FAILED — page fetched but fields "
-            "could not be extracted. IMD may have changed the layout."
+            "could not be extracted."
         )
     if status == "ERROR":
         return f"IMD coastal bulletin: ERROR — {r.get('error')}"
@@ -167,7 +172,6 @@ def _fmt_imd(r: dict) -> str:
         f"issued {r.get('issued_at')}:\n"
         f"- Region: {r.get('region')}\n"
         f"- Valid: {r.get('valid_from')} → {r.get('valid_to')}\n"
-        f"- Synoptic situation: {r.get('synoptic_situation')}\n"
         f"- Wind: {r.get('wind')}\n"
         f"- Weather: {r.get('weather')}\n"
         f"- Visibility: {r.get('visibility')}\n"
@@ -177,9 +181,82 @@ def _fmt_imd(r: dict) -> str:
         f"- STORM SURGE / TIDAL WARNING: "
         f"{r.get('storm_surge_warning')} "
         f"(active={r.get('storm_surge_active')})\n"
-        f"- TIDAL WAVE: {r.get('tidal_wave')} "
-        f"(active={r.get('tidal_wave_active')})\n"
         f"- Attribution: {r.get('attribution')}"
+    )
+
+
+def _fmt_hwassa(r: dict) -> str:
+    status = r.get("status")
+    if status != "OK":
+        return f"INCOIS HWA/SSA: {status} — {r.get('error', '')}"
+
+    sev = r.get("max_severity", "NONE")
+    if sev == "NONE":
+        return "INCOIS HWA/SSA: No active High Wave or Swell Surge alerts."
+
+    return (
+        f"INCOIS HWA/SSA ALERT — severity={sev} ({r.get('max_color')}):\n"
+        f"- Type: {r.get('alert_type')}\n"
+        f"- District: {r.get('district')}, {r.get('state')}\n"
+        f"- Issued: {r.get('issue_date')}\n"
+        f"- Message: {r.get('message')}\n"
+        f"- Note: {r.get('note')}"
+    )
+
+
+def _fmt_cyclone(r: dict) -> str:
+    if r.get("status") != "OK":
+        return f"INCOIS Cyclone: {r.get('status')} — {r.get('error', '')}"
+    if not r.get("has_active_cyclone"):
+        return "INCOIS Cyclone: No active cyclone alerts."
+    return (
+        f"INCOIS Cyclone — {r.get('active_count')} active alert(s):\n"
+        f"- {r.get('active_alerts')}\n"
+        f"- Note: {r.get('note')}"
+    )
+
+
+def _fmt_tsunami(r: dict) -> str:
+    if r.get("status") != "OK":
+        return f"INCOIS Tsunami: {r.get('status')} — {r.get('error', '')}"
+    if not r.get("threat_to_india"):
+        return (
+            f"INCOIS Tsunami: {r.get('event_count')} recent events, "
+            f"no threat to India."
+        )
+    return (
+        f"INCOIS Tsunami THREAT TO INDIA:\n"
+        f"- {len(r.get('threat_events', []))} threatening event(s)\n"
+        f"- Details: {r.get('threat_events')}\n"
+        f"- Note: {r.get('note')}"
+    )
+
+
+def _fmt_osf(r: dict) -> str:
+    if r.get("status") != "OK":
+        return f"INCOIS OSF freshness: {r.get('status')}"
+    return (
+        f"INCOIS OSF forecast dates: {r.get('forecast_dates', {})}\n"
+        f"- Note: {r.get('note')}"
+    )
+
+
+def _fmt_currents(r: dict) -> str:
+    status = r.get("status")
+    if status != "OK":
+        return f"INCOIS Ocean Currents: {status} — {r.get('error', '')}"
+
+    sev = r.get("max_severity", "NONE")
+    if sev == "NONE":
+        return "INCOIS Ocean Currents: No active advisories."
+
+    return (
+        f"INCOIS Ocean Current ALERT — severity={sev} ({r.get('max_color')}):\n"
+        f"- Type: {r.get('alert_type')}\n"
+        f"- District: {r.get('district')}, {r.get('state')}\n"
+        f"- Issued: {r.get('issue_date')}\n"
+        f"- Message: {r.get('message')}\n"
+        f"- Note: {r.get('note')}"
     )
 
 
@@ -193,6 +270,11 @@ _SUMMARISERS = {
     "biolum": _fmt_biolum,
     "algal_bloom": _fmt_algal,
     "imd": _fmt_imd,
+    "hwassa": _fmt_hwassa,
+    "cyclone": _fmt_cyclone,
+    "tsunami": _fmt_tsunami,
+    "osf_freshness": _fmt_osf,
+    "currents": _fmt_currents,
 }
 
 
@@ -201,9 +283,19 @@ _SUMMARISERS = {
 # ═════════════════════════════════════════════════════════════════════
 
 class ResolveLocationAgent(BaseAgent):
+    """
+    Resolve the location and compute the marine query point.
+
+    Writes:
+      - orca_location        : the raw query point
+      - orca_marine_location : the point marine tools should query.
+                               Equal to the query point when coastal,
+                               otherwise the nearest ocean point within
+                               a 200 km radius. None when deep inland.
+    """
+
     async def _run_async_impl(self, ctx: InvocationContext):
         plan_raw = ctx.session.state.get(key("plan"), "")
-
         location_hint = ""
         coords = None
         try:
@@ -227,21 +319,70 @@ class ResolveLocationAgent(BaseAgent):
                 "source": "Plan coordinates",
             }
         elif location_hint:
-            result = await asyncio.to_thread(
-                resolve_location_query, location_hint
-            )
+            result = await asyncio.to_thread(resolve_location_query, location_hint)
         else:
             result = {"status": "NOT_FOUND", "error": "No location in plan."}
 
         ctx.session.state[key("location")] = result
 
+        # ── Compute the marine query point ─────────────────────────
+        marine_location = None
+        marine_note = ""
+
         if result.get("status") == "FOUND":
-            text = (
+            lat = float(result["latitude"])
+            lon = float(result["longitude"])
+            coast_info = await asyncio.to_thread(nearest_coast_info, lat, lon)
+
+            if coast_info["is_coastal"]:
+                marine_location = {
+                    "latitude": lat,
+                    "longitude": lon,
+                    "name": result.get("name"),
+                    "admin1": result.get("admin1"),
+                    "country": result.get("country"),
+                    "source": result.get("source"),
+                    "distance_from_query_km": 0.0,
+                }
+                marine_note = "Query point is coastal."
+            elif coast_info["within_range"]:
+                marine_location = {
+                    "latitude": coast_info["coastal_point"]["latitude"],
+                    "longitude": coast_info["coastal_point"]["longitude"],
+                    "name": f"nearest coast to {result.get('name')}",
+                    "admin1": result.get("admin1"),
+                    "country": result.get("country"),
+                    "source": "ORCA nearest-coast lookup",
+                    "distance_from_query_km": coast_info["distance_km"],
+                }
+                marine_note = coast_info["note"]
+            else:
+                marine_note = coast_info["note"]
+
+        ctx.session.state[key("marine_location")] = marine_location
+
+        # ── Event ─────────────────────────────────────────────────
+        if result.get("status") == "FOUND":
+            lines = [
                 f"Location resolved: {result.get('name')}, "
                 f"{result.get('admin1')}, {result.get('country')}. "
                 f"Latitude={result.get('latitude')}, "
                 f"Longitude={result.get('longitude')}."
-            )
+            ]
+            if marine_location is not None:
+                dist = marine_location.get("distance_from_query_km", 0.0)
+                if dist and dist > 0:
+                    lines.append(
+                        f"Marine query point: "
+                        f"{marine_location['latitude']:.4f}, "
+                        f"{marine_location['longitude']:.4f} "
+                        f"({dist:.1f} km from query point). {marine_note}"
+                    )
+                else:
+                    lines.append(f"Marine query point = query point. {marine_note}")
+            else:
+                lines.append(f"No marine query point available. {marine_note}")
+            text = "\n".join(lines)
         else:
             text = f"Location resolution failed: {_json_block(result)}"
 
@@ -257,8 +398,6 @@ class ResolveLocationAgent(BaseAgent):
 # ═════════════════════════════════════════════════════════════════════
 
 class CapabilityAgent(BaseAgent):
-    """Emits ORCA's capability list when the plan intent is 'meta'."""
-
     async def _run_async_impl(self, ctx: InvocationContext):
         plan_raw = ctx.session.state.get(key("plan"), "{}")
         try:
@@ -283,22 +422,25 @@ ORCA — marine intelligence platform. Capabilities:
 - Marine observations (Copernicus Marine): SST, currents, waves, chlorophyll-a
 - Weather & forecast (Open-Meteo): wind, gusts, precipitation, visibility
 - Fishery zones (INCOIS PFZ): official PFZ lines and landing centres
-- Coral reefs (NOAA Coral Reef Watch): bleaching alerts for Indian reef regions
-- Tides (local harmonic prediction): high/low extremes for supported ports
+- Coral reefs (NOAA Coral Reef Watch): bleaching alerts
+- Tides (local harmonic prediction): high/low extremes
 - Bioluminescence (heuristic): Noctiluca forecast for tourism
 - Algal blooms (Copernicus chlorophyll): bloom risk classification
 - IMD Coastal Bulletin: official port signals, storm surge warnings
-- Safety (deterministic): risk score from ocean + weather + geofence
+- INCOIS HWA/SSA: official High Wave & Swell Surge alerts
+- INCOIS Ocean Current Watch: surface current advisories
+- INCOIS ITEWS: tsunami threat bulletins
+- INCOIS Cyclone: storm surge alerts
+- Safety (deterministic): risk score with hard blockers
 - Location resolution: place names or explicit coordinates
 
-Note: marine domains require a coastal location. Inland locations return
-weather only.
+Note: marine domains use the nearest coast to the query location when
+the query is inland (up to 200 km). Beyond that, only weather applies.
 
 Example questions:
 - "What is the SST off Goa right now?"
 - "Where can I fish near Kochi tomorrow?"
 - "Are there coral reefs near Lakshadweep?"
-- "Is tonight good for bioluminescence in Goa?"
 - "What's the tide at Mumbai tonight?"
 - "Are there any port warnings off Visakhapatnam?"
 """
@@ -318,16 +460,27 @@ Example questions:
 
 class DynamicDataCollectionAgent(BaseAgent):
     """
-    Read domains_needed from the plan and run only the required collectors
-    concurrently. Skips marine domains when the location is inland.
-    Emits per-domain summaries so downstream LLM agents see real numbers.
+    Read domains_needed from the plan, run only the required collectors.
+
+    Marine tools (ocean, pfz, coral, biolum, algal_bloom, geofence) run
+    at the marine query point — which is either the raw query point
+    (when coastal) or the nearest coast within 200 km.
+
+    Global tools (weather, IMD) run at the raw query point.
+
+    Hint-based tools (hwassa, currents, tides, cyclone, tsunami,
+    osf_freshness) don't need coordinates — they use the state or
+    centre name.
     """
 
     MARINE_DOMAINS: ClassVar[set[str]] = {
-        "ocean", "pfz", "coral", "tides", "biolum", "algal_bloom",
+        "ocean", "pfz", "coral", "biolum", "algal_bloom", "geofence",
     }
     GLOBAL_DOMAINS: ClassVar[set[str]] = {
-        "weather", "geofence", "imd",
+        "weather", "imd",
+    }
+    HINT_DOMAINS: ClassVar[set[str]] = {
+        "hwassa", "currents", "tides", "cyclone", "tsunami", "osf_freshness",
     }
 
     async def _run_async_impl(self, ctx: InvocationContext):
@@ -348,58 +501,47 @@ class DynamicDataCollectionAgent(BaseAgent):
             )
             return
 
-        domains = (
-            plan.get("domains_needed")
-            or plan.get("domains")
-            or []
-        )
+        domains = plan.get("domains_needed") or plan.get("domains") or []
         if not isinstance(domains, list):
             domains = []
         if not domains:
             domains = list(_SUMMARISERS.keys())
 
         loc = ctx.session.state.get(key("location"), {})
+        marine_loc = ctx.session.state.get(key("marine_location"))
         loc_ok = loc.get("status") == "FOUND"
-
-        inland = False
-        coast_info = None
-        if loc_ok:
-            try:
-                coast_info = await asyncio.to_thread(
-                    is_coastal,
-                    float(loc["latitude"]),
-                    float(loc["longitude"]),
-                )
-                inland = not coast_info["coastal"]
-            except Exception:
-                inland = False
+        marine_available = marine_loc is not None
 
         filtered = []
         skipped_inland = []
         for d in domains:
-            if inland and d in self.MARINE_DOMAINS:
+            if d in self.MARINE_DOMAINS and not marine_available:
                 skipped_inland.append(d)
                 ctx.session.state[key(d)] = {
                     "status": "BLOCKED_INLAND",
                     "reason": (
-                        f"Location is ~{coast_info['distance_km']} km from "
-                        f"the nearest coastline. Marine data is not "
-                        f"meaningful here."
+                        "Location is deep inland — no nearest coast "
+                        "within the marine data range (200 km)."
                     ),
                 }
             else:
                 filtered.append(d)
 
-        async def run(name: str, fn):
-            if not loc_ok:
+        state_hint = loc.get("admin1") or loc.get("name")
+
+        # ── Runners ───────────────────────────────────────────────
+        async def run_marine(name: str, fn):
+            if not marine_available:
                 ctx.session.state[key(name)] = {
                     "status": "BLOCKED",
-                    "reason": "Location unavailable.",
+                    "reason": "No marine query point.",
                 }
                 return
             try:
                 result = await asyncio.to_thread(
-                    fn, float(loc["latitude"]), float(loc["longitude"])
+                    fn,
+                    float(marine_loc["latitude"]),
+                    float(marine_loc["longitude"]),
                 )
                 ctx.session.state[key(name)] = result
             except Exception as exc:
@@ -408,33 +550,91 @@ class DynamicDataCollectionAgent(BaseAgent):
                     "error": str(exc),
                 }
 
-        state_hint = loc.get("admin1") or loc.get("name")
+        async def run_global(name: str, fn):
+            if not loc_ok:
+                ctx.session.state[key(name)] = {
+                    "status": "BLOCKED",
+                    "reason": "Location unavailable.",
+                }
+                return
+            try:
+                result = await asyncio.to_thread(
+                    fn,
+                    float(loc["latitude"]),
+                    float(loc["longitude"]),
+                )
+                ctx.session.state[key(name)] = result
+            except Exception as exc:
+                ctx.session.state[key(name)] = {
+                    "status": "ERROR",
+                    "error": str(exc),
+                }
 
-        dispatcher = {
+        async def run_hint(name: str, fn):
+            try:
+                result = await asyncio.to_thread(fn)
+                ctx.session.state[key(name)] = result
+            except Exception as exc:
+                ctx.session.state[key(name)] = {
+                    "status": "ERROR",
+                    "error": str(exc),
+                }
+
+        # ── Dispatchers ───────────────────────────────────────────
+        # Marine tools -> marine_loc
+        marine_dispatcher = {
             "ocean":       ("ocean",       get_copernicus_marine_snapshot),
-            "weather":     ("weather",     lambda a, b: get_weather_conditions(a, b, 3)),
             "geofence":    ("geofence",    check_geofence),
             "pfz":         ("pfz",         get_pfz_advisory),
             "coral":       ("coral",       get_coral_bleaching_alert),
-            "tides":       ("tides",       lambda a, b: get_tide_prediction(
-                                                loc.get("name"))),
             "biolum":      ("biolum",      get_bioluminescence_forecast),
             "algal_bloom": ("algal_bloom", get_algal_bloom_risk),
-            "imd":         ("imd",         lambda a, b: get_imd_coastal_bulletin(
-                                                a, b, state_hint=state_hint
-                                            )),
+        }
+        # Global tools -> raw loc
+        global_dispatcher = {
+            "weather": ("weather", lambda a, b: get_weather_conditions(a, b, 3)),
+            "imd":     ("imd",     lambda a, b: get_imd_coastal_bulletin(
+                                        a, b, state_hint=state_hint
+                                    )),
+        }
+        # Hint-based tools -> no coordinates needed
+        hint_dispatcher = {
+            "hwassa":        ("hwassa",        lambda: get_hwassa_alerts(
+                                                    0, 0, state_hint=state_hint
+                                                )),
+            "currents":      ("currents",      lambda: get_ocean_current_alerts(
+                                                    0, 0, state_hint=state_hint
+                                                )),
+            "tides":         ("tides",         lambda: get_tide_prediction(
+                                                    loc.get("name")
+                                                )),
+            "cyclone":       ("cyclone",       lambda: get_cyclone_alerts()),
+            "tsunami":       ("tsunami",       lambda: get_tsunami_bulletins()),
+            "osf_freshness": ("osf_freshness", lambda: get_osf_freshness()),
         }
 
-        collected = [d for d in filtered if d in dispatcher]
+        # ── Fire in parallel ──────────────────────────────────────
+        tasks = []
+        for d in filtered:
+            if d in marine_dispatcher:
+                _, fn = marine_dispatcher[d]
+                tasks.append(run_marine(d, fn))
+            elif d in global_dispatcher:
+                _, fn = global_dispatcher[d]
+                tasks.append(run_global(d, fn))
+            elif d in hint_dispatcher:
+                _, fn = hint_dispatcher[d]
+                tasks.append(run_hint(d, fn))
 
-        if collected:
-            await asyncio.gather(
-                *[run(dispatcher[d][0], dispatcher[d][1]) for d in collected],
-                return_exceptions=True,
-            )
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
-        for d in collected:
-            state_name = dispatcher[d][0]
+        # ── Emit per-domain summaries ─────────────────────────────
+        all_dispatchers = {**marine_dispatcher, **global_dispatcher, **hint_dispatcher}
+        for d in filtered:
+            if d not in all_dispatchers:
+                continue
+            state_name = all_dispatchers[d][0]
             result = ctx.session.state.get(key(state_name), {}) or {}
             formatter = _SUMMARISERS.get(state_name)
             text = formatter(result) if formatter else _json_block(result)
@@ -445,41 +645,23 @@ class DynamicDataCollectionAgent(BaseAgent):
             )
 
         for d in skipped_inland:
-            state_name = d
             yield Event(
                 invocation_id=ctx.invocation_id,
-                author=f"{self.name}_{state_name}",
+                author=f"{self.name}_{d}",
                 content=types.Content(
                     role="model",
                     parts=[types.Part(
                         text=(
-                            f"{state_name.upper()} DATA: SKIPPED — location is "
-                            f"inland (~{coast_info['distance_km']} km from the "
-                            f"nearest coast). No data was collected. Do not "
-                            f"provide any values for this domain."
+                            f"{d.upper()} DATA: SKIPPED — location is deep "
+                            f"inland (no coast within 200 km). No data was "
+                            f"collected. Do not provide any values for this "
+                            f"domain."
                         )
                     )],
                 ),
             )
 
-        if skipped_inland:
-            yield Event(
-                invocation_id=ctx.invocation_id,
-                author=self.name,
-                content=types.Content(
-                    role="model",
-                    parts=[types.Part(
-                        text=(
-                            f"Skipped marine domains {skipped_inland}: "
-                            f"location is inland "
-                            f"(~{coast_info['distance_km']} km from the "
-                            f"nearest coast). Only weather and geofence apply."
-                        )
-                    )],
-                ),
-            )
-
-        if not collected and not skipped_inland:
+        if not filtered and not skipped_inland:
             yield Event(
                 invocation_id=ctx.invocation_id,
                 author=self.name,
@@ -499,8 +681,25 @@ class RiskAssessmentAgent(BaseAgent):
         ocean = ctx.session.state.get(key("ocean"), {})
         weather = ctx.session.state.get(key("weather"), {})
         geofence = ctx.session.state.get(key("geofence"), {})
-        result = calculate_marine_risk(ocean, weather, geofence)
+        hwassa = ctx.session.state.get(key("hwassa"), {})
+        cyclone = ctx.session.state.get(key("cyclone"), {})
+        tsunami = ctx.session.state.get(key("tsunami"), {})
+        currents = ctx.session.state.get(key("currents"), {})
+
+        result = calculate_marine_risk(
+            ocean, weather, geofence,
+            hwassa=hwassa,
+            cyclone=cyclone,
+            tsunami=tsunami,
+            currents=currents,
+        )
         ctx.session.state[key("risk")] = result
+
+        blockers_txt = (
+            "\n".join(f"  • {b}" for b in result.get("blockers", []))
+            or "  (none)"
+        )
+
         yield Event(
             invocation_id=ctx.invocation_id,
             author=self.name,
@@ -511,6 +710,7 @@ class RiskAssessmentAgent(BaseAgent):
                         f"Deterministic marine risk assessment:\n"
                         f"- Risk level: {result['risk_level']}\n"
                         f"- Risk score: {result['risk_score']}/100\n"
+                        f"- Blockers:\n{blockers_txt}\n"
                         f"- Reasons: {result['reasons']}\n"
                         f"- Evaluated parameters: "
                         f"{result['evaluated_parameters']}"
@@ -533,17 +733,6 @@ def _review_status(review_text: str) -> str:
 
 
 class SimpleQueryGateAgent(BaseAgent):
-    """
-    Inside the review loop, immediately exits for single-domain queries.
-
-    Runs first inside the LoopAgent. For simple queries, it writes
-    PASS to the review state and escalates, which causes LoopAgent to
-    stop before peer_review_agent, review_agent, etc. run.
-
-    For complex queries (2+ domains), it does nothing and the review
-    loop proceeds normally.
-    """
-
     async def _run_async_impl(self, ctx: InvocationContext):
         plan_raw = ctx.session.state.get(key("plan"), "{}")
         try:
@@ -562,8 +751,7 @@ class SimpleQueryGateAgent(BaseAgent):
         if len(domains) <= 1:
             ctx.session.state[key("review")] = (
                 "PASS\n"
-                "Single-domain query — evidence is sufficient for a "
-                "direct answer. No peer review needed."
+                "Single-domain query — evidence is sufficient."
             )
             yield Event(
                 invocation_id=ctx.invocation_id,
@@ -603,6 +791,7 @@ class RecheckAgent(BaseAgent):
         review = str(ctx.session.state.get(key("review"), ""))
         status = _review_status(review)
         loc = ctx.session.state.get(key("location"), {})
+        marine_loc = ctx.session.state.get(key("marine_location"))
 
         if status != "RECHECK" or loc.get("status") != "FOUND":
             yield Event(
@@ -616,34 +805,45 @@ class RecheckAgent(BaseAgent):
             return
 
         review_lower = review.lower()
-        lat = float(loc["latitude"])
-        lon = float(loc["longitude"])
         state_hint = loc.get("admin1") or loc.get("name")
         tasks = []
 
+        # Global-tool rechecks use the raw loc
         if any(w in review_lower for w in ("weather", "wind", "forecast")):
             tasks.append(("weather", asyncio.to_thread(
-                get_weather_conditions, lat, lon, 3,
-            )))
-        if any(w in review_lower for w in ("ocean", "wave", "current", "sst", "temperature")):
-            tasks.append(("ocean", asyncio.to_thread(
-                get_copernicus_marine_snapshot, lat, lon,
-            )))
-        if "geofence" in review_lower or "restriction" in review_lower:
-            tasks.append(("geofence", asyncio.to_thread(
-                check_geofence, lat, lon,
-            )))
-        if "pfz" in review_lower or "fish" in review_lower:
-            tasks.append(("pfz", asyncio.to_thread(
-                get_pfz_advisory, lat, lon,
-            )))
-        if "coral" in review_lower or "reef" in review_lower:
-            tasks.append(("coral", asyncio.to_thread(
-                get_coral_bleaching_alert, lat, lon,
+                get_weather_conditions,
+                float(loc["latitude"]), float(loc["longitude"]), 3,
             )))
         if "imd" in review_lower or "port" in review_lower or "bulletin" in review_lower:
             tasks.append(("imd", asyncio.to_thread(
-                get_imd_coastal_bulletin, lat, lon, state_hint,
+                get_imd_coastal_bulletin,
+                float(loc["latitude"]), float(loc["longitude"]), state_hint,
+            )))
+
+        # Marine-tool rechecks use the marine loc
+        if marine_loc is not None:
+            m_lat = float(marine_loc["latitude"])
+            m_lon = float(marine_loc["longitude"])
+            if any(w in review_lower for w in ("ocean", "wave", "current", "sst", "temperature")):
+                tasks.append(("ocean", asyncio.to_thread(
+                    get_copernicus_marine_snapshot, m_lat, m_lon,
+                )))
+            if "geofence" in review_lower or "restriction" in review_lower:
+                tasks.append(("geofence", asyncio.to_thread(
+                    check_geofence, m_lat, m_lon,
+                )))
+            if "pfz" in review_lower or "fish" in review_lower:
+                tasks.append(("pfz", asyncio.to_thread(
+                    get_pfz_advisory, m_lat, m_lon,
+                )))
+            if "coral" in review_lower or "reef" in review_lower:
+                tasks.append(("coral", asyncio.to_thread(
+                    get_coral_bleaching_alert, m_lat, m_lon,
+                )))
+
+        if "hwassa" in review_lower or "high wave" in review_lower or "swell" in review_lower:
+            tasks.append(("hwassa", asyncio.to_thread(
+                get_hwassa_alerts, 0, 0, state_hint,
             )))
 
         results = await asyncio.gather(*[t[1] for t in tasks]) if tasks else []

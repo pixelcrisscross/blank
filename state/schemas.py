@@ -4,8 +4,9 @@ STATE_KEYS = {
     # Planning + location
     "plan": "orca_plan",
     "location": "orca_location",
+    "marine_location": "orca_marine_location",
 
-    # Data blocks
+    # Environmental data blocks
     "ocean": "orca_ocean_data",
     "weather": "orca_weather_data",
     "geofence": "orca_geofence_data",
@@ -14,7 +15,16 @@ STATE_KEYS = {
     "tides": "orca_tide_data",
     "biolum": "orca_biolum_data",
     "algal_bloom": "orca_algal_bloom_data",
-    "imd": "orca_imd_data",                    # <-- NEW
+    "imd": "orca_imd_data",
+
+    # INCOIS hazard blocks
+    "hwassa": "orca_hwassa_data",
+    "cyclone": "orca_cyclone_data",
+    "tsunami": "orca_tsunami_data",
+    "osf_freshness": "orca_osf_freshness_data",
+    "currents": "orca_currents_data",
+
+    # Risk
     "risk": "orca_risk_assessment",
 
     # Reasoning blocks

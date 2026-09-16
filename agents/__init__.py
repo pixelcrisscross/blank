@@ -26,7 +26,7 @@ def orca_model() -> LiteLlm:
     (agent instruction) are used to disable it.
     """
     return LiteLlm(
-        model="ollama_chat/qwen3:8b",
+        model="ollama_chat/qwen3:4b",
         extra_body={"think": False},
         timeout=60,
     )

@@ -3,10 +3,9 @@ Location resolution.
 
 Primary geocoder: Nominatim (OpenStreetMap).
 Fallback: Open-Meteo geocoder.
-Last resort: small table of Indian state/UT coordinates.
 
-Results are cached in-memory so repeated queries (e.g. follow-ups about
-the same place) skip the network round-trip.
+No hardcoded coastal tables — the nearest-coast search
+(tools/nearest_coast.py) handles the coastal/inland distinction.
 """
 from __future__ import annotations
 
@@ -27,29 +26,31 @@ _COORD_RE = re.compile(
     r"(?P<lat>-?\d+(?:\.\d+)?)\s*[, ]\s*(?P<lon>-?\d+(?:\.\d+)?)"
 )
 
-_STATE_COORDS = {
-    "goa":                         ("Goa",            15.2993,  73.8243),
-    "kerala":                      ("Kerala",          9.9312,  76.2673),
-    "karnataka":                   ("Karnataka",      12.9141,  74.8560),
-    "tamil nadu":                  ("Tamil Nadu",     13.0827,  80.2707),
-    "andhra pradesh":              ("Andhra Pradesh", 17.6868,  83.2185),
-    "odisha":                      ("Odisha",         19.8135,  85.8312),
-    "orissa":                      ("Odisha",         19.8135,  85.8312),
-    "gujarat":                     ("Gujarat",        21.6417,  69.6293),
-    "maharashtra":                 ("Maharashtra",    19.0760,  72.8777),
-    "west bengal":                 ("West Bengal",    22.5726,  88.3639),
-    "lakshadweep":                 ("Lakshadweep",    10.5667,  72.6417),
-    "andaman and nicobar islands": ("Port Blair",     11.6234,  92.7265),
-    "andaman":                     ("Port Blair",     11.6234,  92.7265),
-    "nicobar":                     ("Car Nicobar",     9.1694,  92.7714),
-    "puducherry":                  ("Puducherry",     11.9416,  79.8083),
-    "pondicherry":                 ("Puducherry",     11.9416,  79.8083),
-}
-
 _last_nominatim_call = 0.0
-
-# In-memory cache: place string -> result dict
 _GEOCODE_CACHE: dict[str, dict] = {}
+
+_STRIP_PREFIXES = ("off ", "near ", "the ", "from ")
+_STRIP_SUFFIXES = (
+    " coast", " coastline", " beach", " harbour", " harbor",
+    " port", " district", " waters", " sea", " offshore",
+    " harbour area", " harbor area",
+)
+
+
+def _normalize(place: str) -> str:
+    s = (place or "").lower().strip()
+    changed = True
+    while changed:
+        changed = False
+        for prefix in _STRIP_PREFIXES:
+            if s.startswith(prefix):
+                s = s[len(prefix):].strip()
+                changed = True
+        for suffix in _STRIP_SUFFIXES:
+            if s.endswith(suffix):
+                s = s[: -len(suffix)].strip()
+                changed = True
+    return re.sub(r"\s+", " ", s)
 
 
 def _throttle_nominatim() -> None:
@@ -154,15 +155,13 @@ def resolve_location_query(query: str) -> dict:
 
     Order:
       1. Explicit coordinates
-      2. Nominatim (OpenStreetMap)
-      3. Open-Meteo geocoder
-      4. State/UT coordinate table
+      2. Nominatim
+      3. Open-Meteo
     """
     query = (query or "").strip()
     if not query:
         return {"status": "NOT_FOUND", "error": "No location supplied."}
 
-    # Explicit coordinates
     m = _COORD_RE.search(query)
     if m:
         lat = float(m.group("lat"))
@@ -176,37 +175,18 @@ def resolve_location_query(query: str) -> dict:
                 "source": "User-provided coordinates",
             }
 
-    # Clean query text
     cleaned = query
-    for marker in ["location:", "place:", "from", "near", "off"]:
+    for marker in ["location:", "place:"]:
         cleaned = cleaned.replace(marker, " ")
     place = cleaned[:120].strip()
     if not place:
         return {"status": "NOT_FOUND", "error": "No usable location text."}
 
-    # Cache lookup
     cached = _GEOCODE_CACHE.get(place)
     if cached is not None:
         return cached
 
-    # Geocode
     result = _nominatim(place) or _open_meteo(place)
-
-    if result is None:
-        key = place.lower()
-        if key in _STATE_COORDS:
-            name, lat, lon = _STATE_COORDS[key]
-            result = {
-                "status": "FOUND",
-                "name": name,
-                "country": "India",
-                "country_code": "IN",
-                "admin1": name,
-                "latitude": lat,
-                "longitude": lon,
-                "timezone": "Asia/Kolkata",
-                "source": "ORCA state-coordinates table",
-            }
 
     if result is None:
         result = {"status": "NOT_FOUND", "place": place}
