@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_99c3796e9464c59a913e6f8ac5db5860 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+    <div style="
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 9999;
+        background: white;
+        padding: 14px 16px;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 13px;
+        line-height: 1.6;
+        max-width: 300px;
+        color: #1f2937;
+    ">
+        <div style="font-weight: 700; font-size: 14px; margin-bottom: 8px; color: #111827;">
+            ORCA - Gokarna
+        </div>
+        <div style="margin-bottom: 10px;">
+            <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">Conditions</div>
+            <b>SST</b>: 28.49 °C<br><b>Current</b>: 0.16 m/s @ 140°<br><b>Waves</b>: 1.15 m / 5.9 s<br><b>Chlorophyll</b>: 4.63 mg/m³<br><b>Wind</b>: — km/h (gust —)
+        </div>
+        <div>
+            <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">Alerts</div>
+            <i style='color:#6b7280;'>No active INCOIS alerts for this region.</i>
+        </div>
+    </div>
+    
+    
+            <div class="folium-map" id="map_99c3796e9464c59a913e6f8ac5db5860" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_99c3796e9464c59a913e6f8ac5db5860 = L.map(
+                "map_99c3796e9464c59a913e6f8ac5db5860",
+                {
+                    center: [14.594, 74.229],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 11,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+            L.control.scale().addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+
+            
+
+        
+    
+            var tile_layer_c1fda3ca2c3e855517d7d38138a69635 = L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 20,
+  "maxNativeZoom": 20,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+  "subdomains": "abcd",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_c1fda3ca2c3e855517d7d38138a69635.addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+            var marker_3ef6a6a9cc30509bf4ed7458dfa52217 = L.marker(
+                [14.5439629, 74.3184418],
+                {
+}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+            var icon_f2582b3810b9ab1cc4c8cddafa77773e = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "home",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_9fef5bdff7a535b682afb9658a52e2f2 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_073ed89d822425905fe71163c96f1617 = $(`<div id="html_073ed89d822425905fe71163c96f1617" style="width: 100.0%; height: 100.0%;"><b>Gokarna</b><br>Query point</div>`)[0];
+                popup_9fef5bdff7a535b682afb9658a52e2f2.setContent(html_073ed89d822425905fe71163c96f1617);
+            
+        
+
+        marker_3ef6a6a9cc30509bf4ed7458dfa52217.bindPopup(popup_9fef5bdff7a535b682afb9658a52e2f2)
+        ;
+
+        
+    
+    
+            marker_3ef6a6a9cc30509bf4ed7458dfa52217.bindTooltip(
+                `<div>
+                     Gokarna
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_3ef6a6a9cc30509bf4ed7458dfa52217.setIcon(icon_f2582b3810b9ab1cc4c8cddafa77773e);
+            
+    
+            var marker_9aa1887153f7b61dc7144a781a36b6e9 = L.marker(
+                [14.594, 74.229],
+                {
+}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+            var icon_5b89bb11fe71c184f9ddf90ee6fd197e = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "anchor",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_0d650b95256d02bf4fc28db4c0344740 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_127ef125af9bf77aa07df4b6c6501dc4 = $(`<div id="html_127ef125af9bf77aa07df4b6c6501dc4" style="width: 100.0%; height: 100.0%;"><b>nearest coast to Gokarna</b><br>Marine query point<br>11.1 km from query point</div>`)[0];
+                popup_0d650b95256d02bf4fc28db4c0344740.setContent(html_127ef125af9bf77aa07df4b6c6501dc4);
+            
+        
+
+        marker_9aa1887153f7b61dc7144a781a36b6e9.bindPopup(popup_0d650b95256d02bf4fc28db4c0344740)
+        ;
+
+        
+    
+    
+            marker_9aa1887153f7b61dc7144a781a36b6e9.bindTooltip(
+                `<div>
+                     nearest coast to Gokarna
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_9aa1887153f7b61dc7144a781a36b6e9.setIcon(icon_5b89bb11fe71c184f9ddf90ee6fd197e);
+            
+    
+            var poly_line_9c702d5c338bd87a45e02cbd556dfe2e = L.polyline(
+                [[14.5439629, 74.3184418], [14.594, 74.229]],
+                {"bubblingMouseEvents": true, "color": "gray", "dashArray": "5,5", "dashOffset": null, "fill": false, "fillColor": "gray", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.6, "smoothFactor": 1.0, "stroke": true, "weight": 1.5}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+            var circle_marker_8e4811a77bbf0601692bf0619c03971e = L.circleMarker(
+                [14.1662, 73.873],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_5cd46566e747742bad4db24c4d7d4d08 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_e36567afc110e04ac32af1694f479e75 = $(`<div id="html_e36567afc110e04ac32af1694f479e75" style="width: 100.0%; height: 100.0%;"><b>PFZ line #1</b><br>State: KARNATAKA<br>Distance: 61.1 km</div>`)[0];
+                popup_5cd46566e747742bad4db24c4d7d4d08.setContent(html_e36567afc110e04ac32af1694f479e75);
+            
+        
+
+        circle_marker_8e4811a77bbf0601692bf0619c03971e.bindPopup(popup_5cd46566e747742bad4db24c4d7d4d08)
+        ;
+
+        
+    
+    
+            circle_marker_8e4811a77bbf0601692bf0619c03971e.bindTooltip(
+                `<div>
+                     PFZ line (61.1 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_74c489387286929ed8a319c4c80fc079 = L.circleMarker(
+                [14.2861, 73.7451],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_16aaf5486b8386c4491f018f6f65a56c = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_8a6cdbffd255fbc618fcf841189016f5 = $(`<div id="html_8a6cdbffd255fbc618fcf841189016f5" style="width: 100.0%; height: 100.0%;"><b>PFZ line #2</b><br>State: KARNATAKA<br>Distance: 62.4 km</div>`)[0];
+                popup_16aaf5486b8386c4491f018f6f65a56c.setContent(html_8a6cdbffd255fbc618fcf841189016f5);
+            
+        
+
+        circle_marker_74c489387286929ed8a319c4c80fc079.bindPopup(popup_16aaf5486b8386c4491f018f6f65a56c)
+        ;
+
+        
+    
+    
+            circle_marker_74c489387286929ed8a319c4c80fc079.bindTooltip(
+                `<div>
+                     PFZ line (62.4 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_7e6cacec212101351525046a6835fc0f = L.circleMarker(
+                [13.9788, 74.1348],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_0b3a5d26417fe733be512928707c2fb2 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_e7735cf2b7253ce5c189ce70da21768b = $(`<div id="html_e7735cf2b7253ce5c189ce70da21768b" style="width: 100.0%; height: 100.0%;"><b>PFZ line #3</b><br>State: KARNATAKA<br>Distance: 69.2 km</div>`)[0];
+                popup_0b3a5d26417fe733be512928707c2fb2.setContent(html_e7735cf2b7253ce5c189ce70da21768b);
+            
+        
+
+        circle_marker_7e6cacec212101351525046a6835fc0f.bindPopup(popup_0b3a5d26417fe733be512928707c2fb2)
+        ;
+
+        
+    
+    
+            circle_marker_7e6cacec212101351525046a6835fc0f.bindTooltip(
+                `<div>
+                     PFZ line (69.2 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_9ef494d4e9d7b6cc509f800c1c6d4380 = L.circleMarker(
+                [14.4012, 73.5934],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_6bee3f736ab87fff002f505bb1224a8f = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_bf719af04434db19110a04214846c8d7 = $(`<div id="html_bf719af04434db19110a04214846c8d7" style="width: 100.0%; height: 100.0%;"><b>PFZ line #4</b><br>State: KARNATAKA<br>Distance: 71.7 km</div>`)[0];
+                popup_6bee3f736ab87fff002f505bb1224a8f.setContent(html_bf719af04434db19110a04214846c8d7);
+            
+        
+
+        circle_marker_9ef494d4e9d7b6cc509f800c1c6d4380.bindPopup(popup_6bee3f736ab87fff002f505bb1224a8f)
+        ;
+
+        
+    
+    
+            circle_marker_9ef494d4e9d7b6cc509f800c1c6d4380.bindTooltip(
+                `<div>
+                     PFZ line (71.7 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_d0c74b5ac1e9ed3cc10216ec2492a088 = L.circleMarker(
+                [14.6094, 73.3763],
+                {"bubblingMouseEvents": true, "color": "#dc2626", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#dc2626", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_c05ffd7c9936f800a440967b26ddd348 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_d95a1e0d2a7b47afdf9ba01caf230dfe = $(`<div id="html_d95a1e0d2a7b47afdf9ba01caf230dfe" style="width: 100.0%; height: 100.0%;"><b>PFZ line #5</b><br>State: KARNATAKA<br>Distance: 91.8 km</div>`)[0];
+                popup_c05ffd7c9936f800a440967b26ddd348.setContent(html_d95a1e0d2a7b47afdf9ba01caf230dfe);
+            
+        
+
+        circle_marker_d0c74b5ac1e9ed3cc10216ec2492a088.bindPopup(popup_c05ffd7c9936f800a440967b26ddd348)
+        ;
+
+        
+    
+    
+            circle_marker_d0c74b5ac1e9ed3cc10216ec2492a088.bindTooltip(
+                `<div>
+                     PFZ line (91.8 km)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_eec2ec7cbd970102ca5b2164f5baf96a = L.circleMarker(
+                [14.59000015, 74.30000305],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_0ab9b9245a4ec99873e1665f325fe4d5 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_fb2f54392e8a9b7d971846d01a1a30ad = $(`<div id="html_fb2f54392e8a9b7d971846d01a1a30ad" style="width: 100.0%; height: 100.0%;"><b>Gangavali</b><br>KARNATAKA, Uttara Kannada<br>Distance: 7.7 km</div>`)[0];
+                popup_0ab9b9245a4ec99873e1665f325fe4d5.setContent(html_fb2f54392e8a9b7d971846d01a1a30ad);
+            
+        
+
+        circle_marker_eec2ec7cbd970102ca5b2164f5baf96a.bindPopup(popup_0ab9b9245a4ec99873e1665f325fe4d5)
+        ;
+
+        
+    
+    
+            circle_marker_eec2ec7cbd970102ca5b2164f5baf96a.bindTooltip(
+                `<div>
+                     Gangavali
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_672f9437258bc905ee73defc4da5204f = L.circleMarker(
+                [14.71000004, 74.26000214],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_ac7dab7080a2fca461d0c6b8508653b4 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_fddf3a11a83307c0fff7375295968268 = $(`<div id="html_fddf3a11a83307c0fff7375295968268" style="width: 100.0%; height: 100.0%;"><b>Belekeri</b><br>KARNATAKA, Uttara Kannada<br>Distance: 13.3 km</div>`)[0];
+                popup_ac7dab7080a2fca461d0c6b8508653b4.setContent(html_fddf3a11a83307c0fff7375295968268);
+            
+        
+
+        circle_marker_672f9437258bc905ee73defc4da5204f.bindPopup(popup_ac7dab7080a2fca461d0c6b8508653b4)
+        ;
+
+        
+    
+    
+            circle_marker_672f9437258bc905ee73defc4da5204f.bindTooltip(
+                `<div>
+                     Belekeri
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_740122c137f731a904fb1faa034d2273 = L.circleMarker(
+                [14.52000046, 74.33999634],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_9d9b0d245bf56cc5999275f75a7a97ed = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_2e8bd136601683d5a8c530deab7a390f = $(`<div id="html_2e8bd136601683d5a8c530deab7a390f" style="width: 100.0%; height: 100.0%;"><b>Tadri</b><br>KARNATAKA, Uttara Kannada<br>Distance: 14.5 km</div>`)[0];
+                popup_9d9b0d245bf56cc5999275f75a7a97ed.setContent(html_2e8bd136601683d5a8c530deab7a390f);
+            
+        
+
+        circle_marker_740122c137f731a904fb1faa034d2273.bindPopup(popup_9d9b0d245bf56cc5999275f75a7a97ed)
+        ;
+
+        
+    
+    
+            circle_marker_740122c137f731a904fb1faa034d2273.bindTooltip(
+                `<div>
+                     Tadri
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_4922b61b6a418b00bc133155e94709cf = L.circleMarker(
+                [14.42000008, 74.37999725],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_ee300f1b58f99a4686258777af8673e3 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_35222f48bb3cbc04cf6eac1b0cb124fd = $(`<div id="html_35222f48bb3cbc04cf6eac1b0cb124fd" style="width: 100.0%; height: 100.0%;"><b>Kumta Pt</b><br>KARNATAKA, Uttara Kannada<br>Distance: 25.3 km</div>`)[0];
+                popup_ee300f1b58f99a4686258777af8673e3.setContent(html_35222f48bb3cbc04cf6eac1b0cb124fd);
+            
+        
+
+        circle_marker_4922b61b6a418b00bc133155e94709cf.bindPopup(popup_ee300f1b58f99a4686258777af8673e3)
+        ;
+
+        
+    
+    
+            circle_marker_4922b61b6a418b00bc133155e94709cf.bindTooltip(
+                `<div>
+                     Kumta Pt
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_f28da5a67c0313d2f4cc16bc4f3f1d03 = L.circleMarker(
+                [14.85000038, 74.12999725],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#0284c7", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(map_99c3796e9464c59a913e6f8ac5db5860);
+        
+    
+        var popup_bd1547529e813aa04f6c3c9c3f651d7b = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_df9f361c467a357ccdc7d8b3eee5793b = $(`<div id="html_df9f361c467a357ccdc7d8b3eee5793b" style="width: 100.0%; height: 100.0%;"><b>Sadasguvgarg</b><br>KARNATAKA, Uttara Kannada<br>Distance: 30.4 km</div>`)[0];
+                popup_bd1547529e813aa04f6c3c9c3f651d7b.setContent(html_df9f361c467a357ccdc7d8b3eee5793b);
+            
+        
+
+        circle_marker_f28da5a67c0313d2f4cc16bc4f3f1d03.bindPopup(popup_bd1547529e813aa04f6c3c9c3f651d7b)
+        ;
+
+        
+    
+    
+            circle_marker_f28da5a67c0313d2f4cc16bc4f3f1d03.bindTooltip(
+                `<div>
+                     Sadasguvgarg
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+</script>
+</html>
