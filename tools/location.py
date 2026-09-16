@@ -1,11 +1,15 @@
 """
-Location resolution.
+Location resolution with a stronger fallback chain.
 
 Primary geocoder: Nominatim (OpenStreetMap).
-Fallback: Open-Meteo geocoder.
+Fallbacks (in order):
+  1. Nominatim with India filter
+  2. Nominatim without filter (catches localities missing from the
+     India-only index)
+  3. Nominatim with "India" appended to the query
+  4. Open-Meteo geocoder
 
-No hardcoded coastal tables — the nearest-coast search
-(tools/nearest_coast.py) handles the coastal/inland distinction.
+Results are cached in-memory.
 """
 from __future__ import annotations
 
@@ -29,7 +33,17 @@ _COORD_RE = re.compile(
 _last_nominatim_call = 0.0
 _GEOCODE_CACHE: dict[str, dict] = {}
 
-_STRIP_PREFIXES = ("off ", "near ", "the ", "from ")
+_STRIP_PREFIXES = (
+    "information regarding ", "tell me about ", "all information about ",
+    "all information you can give w.r.t off ",
+    "all information you can give w.r.t ",
+    "give me all the data w.r.t off ",
+    "give me all the data w.r.t ",
+    "give me all the data about ",
+    "information about ", "information on ", "what's happening at ",
+    "what is happening at ", "conditions at ", "conditions off ",
+    "off ", "near ", "the ", "from ",
+)
 _STRIP_SUFFIXES = (
     " coast", " coastline", " beach", " harbour", " harbor",
     " port", " district", " waters", " sea", " offshore",
@@ -61,19 +75,22 @@ def _throttle_nominatim() -> None:
     _last_nominatim_call = time.time()
 
 
-def _nominatim(place: str) -> dict | None:
+def _nominatim_query(place: str, *, countrycodes: str | None) -> dict | None:
     _throttle_nominatim()
+    params = {
+        "q": place,
+        "format": "json",
+        "limit": 5,
+        "addressdetails": 1,
+        "accept-language": "en",
+    }
+    if countrycodes:
+        params["countrycodes"] = countrycodes
+
     try:
         r = httpx.get(
             NOMINATIM_URL,
-            params={
-                "q": place,
-                "format": "json",
-                "limit": 5,
-                "countrycodes": "in",
-                "addressdetails": 1,
-                "accept-language": "en",
-            },
+            params=params,
             headers={"User-Agent": _USER_AGENT},
             timeout=20,
             follow_redirects=True,
@@ -86,15 +103,25 @@ def _nominatim(place: str) -> dict | None:
     if not results:
         return None
 
-    results.sort(key=lambda r: float(r.get("importance", 0) or 0), reverse=True)
-    top = results[0]
+    # Prefer Indian results when the query is ambiguous.
+    indian = [
+        r for r in results
+        if (r.get("address") or {}).get("country_code", "").lower() == "in"
+    ]
+    pool = indian or results
+    pool.sort(key=lambda r: float(r.get("importance", 0) or 0), reverse=True)
+    top = pool[0]
 
     addr = top.get("address") or {}
     name = (
         top.get("name")
-        or addr.get("state")
+        or addr.get("suburb")
+        or addr.get("neighbourhood")
+        or addr.get("city_district")
         or addr.get("city")
+        or addr.get("town")
         or addr.get("county")
+        or addr.get("state")
         or (top.get("display_name") or "").split(",")[0].strip()
     )
 
@@ -115,6 +142,27 @@ def _nominatim(place: str) -> dict | None:
         "timezone": "Asia/Kolkata",
         "source": "Nominatim (OpenStreetMap)",
     }
+
+
+def _nominatim(place: str) -> dict | None:
+    """Try Nominatim in three progressively broader modes."""
+    # 1. India-only — the common case.
+    r = _nominatim_query(place, countrycodes="in")
+    if r is not None:
+        return r
+
+    # 2. No country filter — catches localities the India-only index
+    #    doesn't have (some neighbourhoods, small towns).
+    r = _nominatim_query(place, countrycodes=None)
+    if r is not None:
+        return r
+
+    # 3. Append "India" — helps when the free-form query is too short.
+    r = _nominatim_query(f"{place}, India", countrycodes=None)
+    if r is not None:
+        return r
+
+    return None
 
 
 def _open_meteo(place: str) -> dict | None:
@@ -155,7 +203,7 @@ def resolve_location_query(query: str) -> dict:
 
     Order:
       1. Explicit coordinates
-      2. Nominatim
+      2. Nominatim (three modes)
       3. Open-Meteo
     """
     query = (query or "").strip()
@@ -175,10 +223,11 @@ def resolve_location_query(query: str) -> dict:
                 "source": "User-provided coordinates",
             }
 
+    # Strip conversational filler, then normalize.
     cleaned = query
     for marker in ["location:", "place:"]:
         cleaned = cleaned.replace(marker, " ")
-    place = cleaned[:120].strip()
+    place = _normalize(cleaned[:160])
     if not place:
         return {"status": "NOT_FOUND", "error": "No usable location text."}
 

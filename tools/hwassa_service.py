@@ -4,13 +4,11 @@ INCOIS High Wave & Swell Surge Alert service.
 Fetches active HWA/SSA alerts from INCOIS SAMUDRA API.
 Alerts are district-level and forecast-based.
 
-Severity:
-    YELLOW  = Watch (monitor conditions)
-    ORANGE  = Alert (be careful, restrictions likely)
-
-Long-period swells (>= 12 s) generate rip currents even at modest
-wave heights. This is parsed into a `rip_current_risk` flag so
-downstream reasoners and synthesis can surface the hazard.
+IMPORTANT: when no state_hint is available, this tool returns an
+empty result with status NO_STATE_HINT. It does NOT fall back to
+dumping India-wide alerts — that behavior caused the pipeline to
+report Andaman & Nicobar warnings for queries about Karnataka or
+Kerala.
 
 Source: https://samudra.incois.gov.in/incoismobileappdata/rest/incois/hwassalatestdata
 """
@@ -76,30 +74,19 @@ def _severity_order(color: str) -> int:
     return 0
 
 
-def _matches_location(alert: dict, state_hint: str | None) -> bool:
-    if not state_hint:
+def _state_matches(alert: dict, state_hint: str) -> bool:
+    alert_state = (alert.get("STATE") or "").upper().strip()
+    hint = state_hint.upper().strip()
+    if not alert_state or not hint:
         return False
-    alert_state = (alert.get("STATE") or "").upper()
-    hint = state_hint.upper()
     return hint in alert_state or alert_state in hint
 
 
 def _parse_swell_from_message(message: str) -> dict:
-    """
-    Extract structured swell fields from the INCOIS alert message.
-
-    Example messages:
-      "Swell waves in the range of 14.0 - 16.0 sec period with 0.7 - 0.9 m height"
-      "High waves in the range of 3.0 - 3.4 meters"
-
-    Returns a dict with swell_period_s_range, wave_height_m_range, and
-    a rip_current_risk flag if the period exceeds 12 seconds.
-    """
     out: dict = {}
     if not message:
         return out
 
-    # Period: "14.0 - 16.0 sec period" or "14 - 16 seconds"
     m = re.search(
         r"(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(?:sec|s)\b",
         message, flags=re.IGNORECASE,
@@ -107,7 +94,6 @@ def _parse_swell_from_message(message: str) -> dict:
     if m:
         out["swell_period_s_range"] = [float(m.group(1)), float(m.group(2))]
 
-    # Height: "0.7 - 0.9 m height" or "3.0 - 3.4 meters"
     m = re.search(
         r"(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(?:m\b|meters?)",
         message, flags=re.IGNORECASE,
@@ -115,8 +101,6 @@ def _parse_swell_from_message(message: str) -> dict:
     if m:
         out["wave_height_m_range"] = [float(m.group(1)), float(m.group(2))]
 
-    # Rip current risk: long-period swell (>= 12 s) generates rip currents
-    # even at modest wave height.
     if out.get("swell_period_s_range"):
         max_period = max(out["swell_period_s_range"])
         if max_period >= 12.0:
@@ -137,6 +121,27 @@ def get_hwassa_alerts(
     longitude: float,
     state_hint: str | None = None,
 ) -> dict[str, Any]:
+    """
+    Return active HWA/SSA alerts for a state.
+
+    If no state_hint is provided, returns an empty result with status
+    NO_STATE_HINT. This is critical — the previous version dumped every
+    India-wide alert when the state was unknown, which caused misleading
+    warnings for a query about a location in Karnataka.
+    """
+    # Guard: without a state hint we cannot filter safely.
+    if not state_hint or not state_hint.strip():
+        return {
+            "status": "NO_STATE_HINT",
+            "source": "INCOIS HWA/SSA",
+            "active_alerts": [],
+            "max_severity": "NONE",
+            "note": (
+                "No state hint available — cannot filter India-wide "
+                "alerts to the query location."
+            ),
+        }
+
     try:
         data = _fetch_alerts()
     except Exception as exc:
@@ -152,21 +157,17 @@ def get_hwassa_alerts(
 
     matched = [
         (kind, alert) for kind, alert in all_alerts
-        if _matches_location(alert, state_hint)
+        if _state_matches(alert, state_hint)
     ]
-
-    india_wide = False
-    if not matched and all_alerts:
-        matched = all_alerts
-        india_wide = True
 
     if not matched:
         return {
             "status": "OK",
             "source": "INCOIS HWA/SSA",
+            "state_hint": state_hint,
             "active_alerts": [],
             "max_severity": "NONE",
-            "note": "No active High Wave or Swell Surge alerts for this location.",
+            "note": f"No active HWA/SSA alerts for {state_hint}.",
         }
 
     matched.sort(key=lambda x: _severity_order(x[1].get("Color")), reverse=True)
@@ -178,12 +179,12 @@ def get_hwassa_alerts(
         else "NONE"
     )
 
-    # Parse structured swell info from the top alert message
     swell = _parse_swell_from_message(top_alert.get("Message") or "")
 
     return {
         "status": "OK",
         "source": "INCOIS HWA/SSA",
+        "state_hint": state_hint,
         "data_date": data.get("LatestHWADate") or data.get("LatestSSADate"),
         "active_alert_count": len(matched),
         "max_severity": severity,
@@ -207,11 +208,8 @@ def get_hwassa_alerts(
             }
             for kind, a in matched[:10]
         ],
-        "india_wide": india_wide,
         "note": (
             "Official INCOIS High Wave / Swell Surge advisory. "
             "Orange = Alert (be careful). Yellow = Watch (monitor)."
-            if not india_wide
-            else "No state-specific match; showing India-wide active alerts."
         ),
     }
