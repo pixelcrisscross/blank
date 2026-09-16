@@ -1,0 +1,17 @@
+# skip the .env files
+.env
+
+# skip the demo folder
+demo/
+
+# skip the test folder
+test/
+
+# skip the qa folder
+qa/
+
+# skip the .venv folder
+.venv/
+
+# skip the .adk folder
+.adk/

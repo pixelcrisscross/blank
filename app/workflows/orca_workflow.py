@@ -1,23 +1,17 @@
-from google.adk.agents import SequentialAgent, ParallelAgent, LoopAgent
+from google.adk.agents import SequentialAgent, LoopAgent
 
 from agents.planner import planner_agent
 from agents.data_agents import (
     ResolveLocationAgent,
     CapabilityAgent,
     DynamicDataCollectionAgent,
+    ConditionalReasoningAgent,
     RiskAssessmentAgent,
     RecheckAgent,
     ReviewGateAgent,
     SimpleQueryGateAgent,
 )
-from agents.reasoning_agents import (
-    ocean_reasoner,
-    weather_reasoner,
-    fishery_reasoner,
-    safety_reasoner,
-    tourism_reasoner,
-    peer_review_agent,
-)
+from agents.reasoning_agents import peer_review_agent
 from agents.review_agent import review_agent
 from agents.synthesis_agent import synthesis_agent
 
@@ -40,16 +34,11 @@ data_collection_agent = DynamicDataCollectionAgent(
     ),
 )
 
-specialist_parallel = ParallelAgent(
-    name="parallel_specialist_reasoning",
-    description="Run independent domain interpretations concurrently.",
-    sub_agents=[
-        ocean_reasoner,
-        weather_reasoner,
-        fishery_reasoner,
-        safety_reasoner,
-        tourism_reasoner,
-    ],
+reasoning_agent = ConditionalReasoningAgent(
+    name="conditional_reasoning",
+    description=(
+        "Run only the specialist reasoners whose domains were collected."
+    ),
 )
 
 risk_agent = RiskAssessmentAgent(
@@ -84,15 +73,15 @@ orca_workflow = SequentialAgent(
     name="orca_marine_workflow",
     description=(
         "Agentic marine-intelligence workflow with planning, dynamic "
-        "evidence collection, specialist collaboration, iterative review, "
-        "and synthesis."
+        "evidence collection, conditional specialist reasoning, "
+        "iterative review, and synthesis."
     ),
     sub_agents=[
         planner_agent,
         capability_agent,
         resolve_location_agent,
         data_collection_agent,
-        specialist_parallel,
+        reasoning_agent,
         risk_agent,
         review_loop,
         synthesis_agent,

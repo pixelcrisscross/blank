@@ -38,7 +38,16 @@ META-QUERY RULE (highest priority):
   system is, or any question about the platform itself:
   set intent to "meta", domains_needed to [], location to null,
   coordinates to null, time_request to null, and all needs_* to false.
-  Do NOT invent a marine plan for a meta-question.
+
+ALL-INFORMATION RULE:
+- If the user asks for "all information", "everything", "full data",
+  "complete picture", or similar about a coastal location:
+  set intent to "combined"
+  set needs_safety, needs_fishery, needs_tourism all to true
+  set domains_needed to the full set:
+  ["ocean", "weather", "imd", "hwassa", "currents", "tsunami",
+   "pfz", "coral", "tides", "biolum", "algal_bloom", "cyclone"]
+- Do NOT narrow this to just safety. The user asked for everything.
 
 TEMPERATURE RULE:
 - "SST", "sea temperature", "ocean temperature", "sea surface":
@@ -48,8 +57,7 @@ TEMPERATURE RULE:
   Only include "ocean" if "sea" or "ocean" or "SST" is explicitly
   mentioned.
 - If unsure whether a "temperature" query is marine or atmospheric,
-  include BOTH "weather" and "ocean". The coastal check will skip
-  whichever does not apply.
+  include BOTH "weather" and "ocean".
 
 INLAND RULE:
 - If the user names a place that is clearly inland (not on the coast),
@@ -60,39 +68,43 @@ IMD RULE (Indian coastal waters):
 - If the location is on the Indian coast AND the user asks about
   safety, boating, fishing, port operations, or "current conditions",
   include "imd" in domains_needed.
-- Never include "imd" for inland locations. IMD bulletins are coastal-only.
+- Never include "imd" for inland locations.
 
 INCOIS HAZARD RULES (highest operational priority):
 - For ANY Indian coastal location where the user asks about safety,
   fishing, boating, swimming, diving, or "current conditions", ALWAYS
-  include: "hwassa" (High Wave/Swell Surge alerts) and "tsunami"
-  (ITEWS bulletins).
-- If the user asks about boating, swimming, diving, or "current
-  conditions" → also include "currents" (Ocean Current Watch).
-- If the user asks about cyclones, storms, or severe weather →
-  include "cyclone".
-- If the user asks "is this forecast current" or about data freshness →
-  include "osf_freshness".
-- These are official INCOIS hazard alerts. They take priority over
-  Copernicus and Open-Meteo environmental values in the final answer.
+  include: "hwassa" and "tsunami".
+- If the user asks about boating, swimming, diving → include "currents".
+- If the user asks about cyclones, storms, or severe weather → include "cyclone".
+- If the user asks about data freshness → include "osf_freshness".
 
 DOMAIN RULES:
-- "where can I fish" or mentions PFZ → include "pfz", needs_fishery=true.
+- "where can I fish" or PFZ → include "pfz", needs_fishery=true.
 - tides, oysters, "best time to fish" → include "tides".
-- coral reefs, bleaching, reef health → include "coral".
-- bioluminescence, "glowing water", "sea sparkle" → include "biolum",
-  needs_tourism=true.
-- algal bloom, "green water", water quality → include "algal_bloom",
-  needs_tourism=true.
-- Broad safety or trip-planning question at an Indian coastal location
-  → include "ocean", "weather", "geofence", "tides", "imd", "hwassa",
-  "tsunami".
-- Current marine observation ("what is the SST") → "ocean" (+ "imd",
-  "hwassa", "tsunami" for Indian coastal).
-- Current weather ("what is the weather", "how hot is it") → "weather".
+- coral reefs, bleaching → include "coral".
+- bioluminescence, "glowing water" → include "biolum", needs_tourism=true.
+- algal bloom, "green water" → include "algal_bloom", needs_tourism=true.
+- Broad safety or trip-planning question → include "ocean", "weather",
+  "geofence", "tides", "imd", "hwassa", "tsunami".
+- Current marine observation → "ocean".
+- Current weather → "weather".
 
 TIME:
 - For future questions, keep the future phrase in time_request.
+
+Example output for "all information you can give w.r.t Varkala":
+{
+  "intent": "combined",
+  "location": "Varkala",
+  "coordinates": null,
+  "time_request": "now",
+  "domains_needed": ["ocean", "weather", "imd", "hwassa", "currents",
+                     "tsunami", "pfz", "coral", "tides", "biolum",
+                     "algal_bloom", "cyclone"],
+  "needs_safety": true,
+  "needs_fishery": true,
+  "needs_tourism": true
+}
 
 Example output for "Where can I fish near Goa tonight?":
 {
@@ -100,33 +112,9 @@ Example output for "Where can I fish near Goa tonight?":
   "location": "Goa",
   "coordinates": null,
   "time_request": "tonight",
-  "domains_needed": ["ocean", "pfz", "tides", "imd", "hwassa", "tsunami", "currents"],
+  "domains_needed": ["ocean", "pfz", "tides", "imd", "hwassa", "tsunami"],
   "needs_safety": false,
   "needs_fishery": true,
-  "needs_tourism": false
-}
-
-Example output for "What are the conditions off Visakhapatnam for fishing?":
-{
-  "intent": "marine_safety",
-  "location": "Visakhapatnam",
-  "coordinates": null,
-  "time_request": "now",
-  "domains_needed": ["ocean", "weather", "imd", "hwassa", "tsunami", "currents"],
-  "needs_safety": true,
-  "needs_fishery": true,
-  "needs_tourism": false
-}
-
-Example output for "what is the temperature in Koramangala?":
-{
-  "intent": "weather",
-  "location": "Koramangala",
-  "coordinates": null,
-  "time_request": "now",
-  "domains_needed": ["weather", "ocean"],
-  "needs_safety": false,
-  "needs_fishery": false,
   "needs_tourism": false
 }
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from typing import ClassVar
 
 from google.adk.agents import BaseAgent
@@ -37,23 +38,72 @@ def _json_block(payload) -> str:
         return str(payload)[:4000]
 
 
+def _r(value, places: int = 2):
+    """Round a value to `places` decimals. Pass through None / non-numeric."""
+    try:
+        if value is None:
+            return None
+        return round(float(value), places)
+    except (TypeError, ValueError):
+        return value
+
+
+def _extract_location_from_plan(plan_raw) -> tuple[str, dict | None]:
+    """
+    Robustly extract (location_hint, coordinates) from the planner output.
+
+    Handles:
+      - Clean JSON
+      - JSON wrapped in ```json fences
+      - JSON with leading prose ("Here is the plan: {...}")
+      - Completely non-JSON responses (returns the raw text as a
+        fallback hint so the geocoder can at least try to match a
+        place name)
+    """
+    text = plan_raw if isinstance(plan_raw, str) else str(plan_raw)
+    text = text.strip()
+
+    text = re.sub(r"^```(?:json)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+
+    candidate = text
+    if not candidate.startswith("{"):
+        m = re.search(r"\{.*\}", text, flags=re.DOTALL)
+        if m:
+            candidate = m.group(0)
+
+    plan = None
+    try:
+        plan = json.loads(candidate)
+    except Exception:
+        pass
+
+    if isinstance(plan, dict):
+        location = plan.get("location")
+        coords = plan.get("coordinates")
+        return (str(location).strip() if location else "", coords)
+
+    return (text[:120], None)
+
+
 # ═════════════════════════════════════════════════════════════════════
 # DOMAIN SUMMARISERS
 # ═════════════════════════════════════════════════════════════════════
 
 def _fmt_ocean(r: dict) -> str:
     obs = r.get("observations", {}) or {}
-    sst = (obs.get("temperature") or {}).get("value")
+    sst = _r((obs.get("temperature") or {}).get("value"), 2)
     cur = obs.get("currents") or {}
     wav = obs.get("waves") or {}
-    chl = (obs.get("chlorophyll") or {}).get("value")
+    chl = _r((obs.get("chlorophyll") or {}).get("value"), 2)
     return (
         f"Ocean data (Copernicus Marine), status={r.get('status')}:\n"
         f"- SST (OBSERVED): {sst} °C\n"
-        f"- Current speed: {cur.get('speed_ms')} m/s, "
-        f"direction {cur.get('direction_deg')}°\n"
-        f"- Significant wave height: {wav.get('significant_wave_height_m')} m, "
-        f"period {wav.get('mean_wave_period_s')} s\n"
+        f"- Current speed: {_r(cur.get('speed_ms'), 2)} m/s, "
+        f"direction {_r(cur.get('direction_deg'), 0)}°\n"
+        f"- Significant wave height: "
+        f"{_r(wav.get('significant_wave_height_m'), 2)} m, "
+        f"period {_r(wav.get('mean_wave_period_s'), 1)} s\n"
         f"- Chlorophyll-a: {chl} mg/m³\n"
         f"- Observation time: "
         f"{(obs.get('temperature') or {}).get('observation_time')}"
@@ -63,16 +113,41 @@ def _fmt_ocean(r: dict) -> str:
 def _fmt_weather(r: dict) -> str:
     cur = r.get("current", {}) or {}
     units = r.get("current_units", {}) or {}
-    return (
-        f"Weather (Open-Meteo), status={r.get('status')}:\n"
-        f"- Wind speed: {cur.get('wind_speed_10m')} "
-        f"{units.get('wind_speed_10m', '')}\n"
-        f"- Wind gust: {cur.get('wind_gusts_10m')} "
-        f"{units.get('wind_gusts_10m', '')}\n"
-        f"- Precipitation: {cur.get('precipitation')} mm\n"
-        f"- Weather code: {cur.get('weather_code')}\n"
-        f"- Pressure: {cur.get('pressure_msl')} hPa"
-    )
+    hourly = r.get("hourly", {}) or {}
+
+    lines = [
+        f"Weather (Open-Meteo), status={r.get('status')}:",
+        f"- Current wind speed: {_r(cur.get('wind_speed_10m'), 1)} "
+        f"{units.get('wind_speed_10m', '')}",
+        f"- Current wind gust: {_r(cur.get('wind_gusts_10m'), 1)} "
+        f"{units.get('wind_gusts_10m', '')}",
+        f"- Current precipitation: {_r(cur.get('precipitation'), 1)} mm",
+        f"- Weather code: {cur.get('weather_code')}",
+        f"- Pressure: {_r(cur.get('pressure_msl'), 0)} hPa",
+    ]
+
+    # Include a small hourly forecast slice so reasoners have real
+    # forecast data instead of inventing it.
+    times = hourly.get("time") or []
+    if isinstance(times, list) and times:
+        n = min(6, len(times))
+        lines.append("- Hourly forecast (next few hours):")
+        for i in range(n):
+            t = times[i]
+            w_list = hourly.get("wind_speed_10m") or []
+            g_list = hourly.get("wind_gusts_10m") or []
+            p_list = hourly.get("precipitation") or []
+            c_list = hourly.get("weather_code") or []
+            w = w_list[i] if i < len(w_list) else None
+            g = g_list[i] if i < len(g_list) else None
+            p = p_list[i] if i < len(p_list) else None
+            c = c_list[i] if i < len(c_list) else None
+            lines.append(
+                f"  {t} | wind {_r(w, 1)} | gust {_r(g, 1)} | "
+                f"precip {_r(p, 1)} | code {c}"
+            )
+
+    return "\n".join(lines)
 
 
 def _fmt_geofence(r: dict) -> str:
@@ -91,7 +166,7 @@ def _fmt_pfz(r: dict) -> str:
     if lines:
         n = lines[0]
         s += (
-            f"- Nearest PFZ line: {n.get('distance_km')} km away at "
+            f"- Nearest PFZ line: {_r(n.get('distance_km'), 1)} km away at "
             f"({n.get('nearest_lat')}, {n.get('nearest_lon')}), "
             f"state={n.get('state')}\n"
             f"- Total PFZ lines within radius: {len(lines)}\n"
@@ -102,7 +177,7 @@ def _fmt_pfz(r: dict) -> str:
         lc = lcs[0]
         s += (
             f"- Nearest landing centre: {lc.get('name')} "
-            f"({lc.get('sector')}), {lc.get('distance_km')} km away\n"
+            f"({lc.get('sector')}), {_r(lc.get('distance_km'), 1)} km away\n"
             f"- Total landing centres within radius: {len(lcs)}\n"
         )
     else:
@@ -117,20 +192,29 @@ def _fmt_coral(r: dict) -> str:
         f"- Bleaching alert: {r.get('bleaching_alert')}\n"
         f"- Level code: {r.get('bleaching_alert_level')}\n"
         f"- Reef region: {r.get('reef_region')}\n"
-        f"- Distance to reef: {r.get('distance_to_reef_km')} km\n"
+        f"- Distance to reef: {_r(r.get('distance_to_reef_km'), 1)} km\n"
         f"- Interpretation: {r.get('interpretation')}\n"
         f"- Note: {r.get('note')}"
     )
 
 
 def _fmt_tides(r: dict) -> str:
+    extremes = r.get("extremes") or []
+    compact = [
+        {
+            "time_utc": e.get("time_utc"),
+            "type": e.get("type"),
+            "height_m": _r(e.get("height_m"), 2),
+        }
+        for e in extremes[:4]
+    ]
     return (
         f"Tides (local harmonic prediction), status={r.get('status')}:\n"
         f"- Port: {r.get('port')}\n"
         f"- Moon regime: {r.get('moon_regime')}, "
-        f"illumination {r.get('illumination_pct')}%\n"
-        f"- Range over window: {r.get('range_m')} m\n"
-        f"- Extremes: {r.get('extremes')}\n"
+        f"illumination {_r(r.get('illumination_pct'), 1)}%\n"
+        f"- Range over window: {_r(r.get('range_m'), 2)} m\n"
+        f"- Extremes: {compact}\n"
         f"- Note: {r.get('note')}"
     )
 
@@ -138,7 +222,7 @@ def _fmt_tides(r: dict) -> str:
 def _fmt_biolum(r: dict) -> str:
     return (
         f"Bioluminescence forecast (FORECAST): {r.get('likelihood_label')} "
-        f"({r.get('likelihood_score')}/100)\n"
+        f"({_r(r.get('likelihood_score'), 1)}/100)\n"
         f"- Factors: {r.get('factors')}\n"
         f"- Disclaimer: {r.get('disclaimer')}"
     )
@@ -147,7 +231,7 @@ def _fmt_biolum(r: dict) -> str:
 def _fmt_algal(r: dict) -> str:
     return (
         f"Algal bloom risk, status={r.get('status')}:\n"
-        f"- Chlorophyll-a: {r.get('chlorophyll_a_mg_m3')} mg/m³\n"
+        f"- Chlorophyll-a: {_r(r.get('chlorophyll_a_mg_m3'), 2)} mg/m³\n"
         f"- Risk level: {r.get('risk_level')}\n"
         f"- Interpretation: {r.get('interpretation')}"
     )
@@ -194,14 +278,27 @@ def _fmt_hwassa(r: dict) -> str:
     if sev == "NONE":
         return "INCOIS HWA/SSA: No active High Wave or Swell Surge alerts."
 
-    return (
-        f"INCOIS HWA/SSA ALERT — severity={sev} ({r.get('max_color')}):\n"
-        f"- Type: {r.get('alert_type')}\n"
-        f"- District: {r.get('district')}, {r.get('state')}\n"
-        f"- Issued: {r.get('issue_date')}\n"
-        f"- Message: {r.get('message')}\n"
-        f"- Note: {r.get('note')}"
-    )
+    lines = [
+        f"INCOIS HWA/SSA ALERT — severity={sev} ({r.get('max_color')}):",
+        f"- Type: {r.get('alert_type')}",
+        f"- District: {r.get('district')}, {r.get('state')}",
+        f"- Issued: {r.get('issue_date')}",
+    ]
+
+    period = r.get("swell_period_s_range")
+    if period:
+        lines.append(f"- Swell period: {period[0]:.0f}-{period[1]:.0f} s")
+
+    height = r.get("wave_height_m_range")
+    if height:
+        lines.append(f"- Wave height: {height[0]:.1f}-{height[1]:.1f} m")
+
+    if r.get("rip_current_risk"):
+        lines.append(f"- ⚠ RIP CURRENT RISK: {r.get('rip_current_note')}")
+
+    lines.append(f"- Message: {r.get('message')}")
+    lines.append(f"- Note: {r.get('note')}")
+    return "\n".join(lines)
 
 
 def _fmt_cyclone(r: dict) -> str:
@@ -289,22 +386,11 @@ class ResolveLocationAgent(BaseAgent):
     Writes:
       - orca_location        : the raw query point
       - orca_marine_location : the point marine tools should query.
-                               Equal to the query point when coastal,
-                               otherwise the nearest ocean point within
-                               a 200 km radius. None when deep inland.
     """
 
     async def _run_async_impl(self, ctx: InvocationContext):
         plan_raw = ctx.session.state.get(key("plan"), "")
-        location_hint = ""
-        coords = None
-        try:
-            plan = json.loads(plan_raw) if isinstance(plan_raw, str) else plan_raw
-            if isinstance(plan, dict):
-                location_hint = str(plan.get("location") or "").strip()
-                coords = plan.get("coordinates")
-        except Exception:
-            location_hint = str(plan_raw).strip()
+        location_hint, coords = _extract_location_from_plan(plan_raw)
 
         if (
             isinstance(coords, dict)
@@ -325,7 +411,6 @@ class ResolveLocationAgent(BaseAgent):
 
         ctx.session.state[key("location")] = result
 
-        # ── Compute the marine query point ─────────────────────────
         marine_location = None
         marine_note = ""
 
@@ -361,7 +446,6 @@ class ResolveLocationAgent(BaseAgent):
 
         ctx.session.state[key("marine_location")] = marine_location
 
-        # ── Event ─────────────────────────────────────────────────
         if result.get("status") == "FOUND":
             lines = [
                 f"Location resolved: {result.get('name')}, "
@@ -443,6 +527,7 @@ Example questions:
 - "Are there coral reefs near Lakshadweep?"
 - "What's the tide at Mumbai tonight?"
 - "Are there any port warnings off Visakhapatnam?"
+- "All information about Varkala"
 """
         yield Event(
             invocation_id=ctx.invocation_id,
@@ -459,20 +544,6 @@ Example questions:
 # ═════════════════════════════════════════════════════════════════════
 
 class DynamicDataCollectionAgent(BaseAgent):
-    """
-    Read domains_needed from the plan, run only the required collectors.
-
-    Marine tools (ocean, pfz, coral, biolum, algal_bloom, geofence) run
-    at the marine query point — which is either the raw query point
-    (when coastal) or the nearest coast within 200 km.
-
-    Global tools (weather, IMD) run at the raw query point.
-
-    Hint-based tools (hwassa, currents, tides, cyclone, tsunami,
-    osf_freshness) don't need coordinates — they use the state or
-    centre name.
-    """
-
     MARINE_DOMAINS: ClassVar[set[str]] = {
         "ocean", "pfz", "coral", "biolum", "algal_bloom", "geofence",
     }
@@ -529,7 +600,6 @@ class DynamicDataCollectionAgent(BaseAgent):
 
         state_hint = loc.get("admin1") or loc.get("name")
 
-        # ── Runners ───────────────────────────────────────────────
         async def run_marine(name: str, fn):
             if not marine_available:
                 ctx.session.state[key(name)] = {
@@ -580,8 +650,6 @@ class DynamicDataCollectionAgent(BaseAgent):
                     "error": str(exc),
                 }
 
-        # ── Dispatchers ───────────────────────────────────────────
-        # Marine tools -> marine_loc
         marine_dispatcher = {
             "ocean":       ("ocean",       get_copernicus_marine_snapshot),
             "geofence":    ("geofence",    check_geofence),
@@ -590,14 +658,12 @@ class DynamicDataCollectionAgent(BaseAgent):
             "biolum":      ("biolum",      get_bioluminescence_forecast),
             "algal_bloom": ("algal_bloom", get_algal_bloom_risk),
         }
-        # Global tools -> raw loc
         global_dispatcher = {
             "weather": ("weather", lambda a, b: get_weather_conditions(a, b, 3)),
             "imd":     ("imd",     lambda a, b: get_imd_coastal_bulletin(
                                         a, b, state_hint=state_hint
                                     )),
         }
-        # Hint-based tools -> no coordinates needed
         hint_dispatcher = {
             "hwassa":        ("hwassa",        lambda: get_hwassa_alerts(
                                                     0, 0, state_hint=state_hint
@@ -613,7 +679,6 @@ class DynamicDataCollectionAgent(BaseAgent):
             "osf_freshness": ("osf_freshness", lambda: get_osf_freshness()),
         }
 
-        # ── Fire in parallel ──────────────────────────────────────
         tasks = []
         for d in filtered:
             if d in marine_dispatcher:
@@ -629,7 +694,6 @@ class DynamicDataCollectionAgent(BaseAgent):
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
-        # ── Emit per-domain summaries ─────────────────────────────
         all_dispatchers = {**marine_dispatcher, **global_dispatcher, **hint_dispatcher}
         for d in filtered:
             if d not in all_dispatchers:
@@ -670,6 +734,101 @@ class DynamicDataCollectionAgent(BaseAgent):
                     parts=[types.Part(text="No data collectors requested.")],
                 ),
             )
+
+
+# ═════════════════════════════════════════════════════════════════════
+# CONDITIONAL REASONING
+# ═════════════════════════════════════════════════════════════════════
+
+class ConditionalReasoningAgent(BaseAgent):
+    """
+    Run only the specialist reasoners whose domains were collected.
+    """
+
+    async def _run_async_impl(self, ctx: InvocationContext):
+        from agents.reasoning_agents import (
+            ocean_reasoner, weather_reasoner, fishery_reasoner,
+            safety_reasoner, tourism_reasoner,
+        )
+
+        plan_raw = ctx.session.state.get(key("plan"), "{}")
+        try:
+            plan = json.loads(plan_raw) if isinstance(plan_raw, str) else plan_raw
+        except Exception:
+            plan = {}
+
+        domains = (
+            (plan.get("domains_needed") if isinstance(plan, dict) else None)
+            or (plan.get("domains") if isinstance(plan, dict) else None)
+            or []
+        )
+        if not isinstance(domains, list):
+            domains = []
+
+        mapping = {
+            "ocean_reasoner":   {"ocean", "hwassa", "currents"},
+            "weather_reasoner": {"weather", "cyclone"},
+            "fishery_reasoner": {"pfz"},
+            "safety_reasoner":  {"ocean", "weather", "hwassa", "currents",
+                                 "tsunami", "cyclone", "geofence"},
+            "tourism_reasoner": {"biolum", "algal_bloom", "coral", "tides"},
+        }
+        reasoners = {
+            "ocean_reasoner":   ocean_reasoner,
+            "weather_reasoner": weather_reasoner,
+            "fishery_reasoner": fishery_reasoner,
+            "safety_reasoner":  safety_reasoner,
+            "tourism_reasoner": tourism_reasoner,
+        }
+
+        active = [
+            name for name, triggers in mapping.items()
+            if set(domains) & triggers
+        ]
+        if not active:
+            active = ["safety_reasoner"]
+
+        if len(active) == 1:
+            yield Event(
+                invocation_id=ctx.invocation_id,
+                author=self.name,
+                content=types.Content(
+                    role="model",
+                    parts=[types.Part(text=f"Running 1 reasoner: {active[0]}")],
+                ),
+            )
+            async for event in reasoners[active[0]].run_async(ctx):
+                yield event
+            return
+
+        yield Event(
+            invocation_id=ctx.invocation_id,
+            author=self.name,
+            content=types.Content(
+                role="model",
+                parts=[types.Part(
+                    text=f"Running {len(active)} reasoners: {active}"
+                )],
+            ),
+        )
+
+        async def collect(name):
+            events = []
+            async for event in reasoners[name].run_async(ctx):
+                events.append(event)
+            return name, events
+
+        results = await asyncio.gather(
+            *[collect(name) for name in active],
+            return_exceptions=True,
+        )
+
+        for item in results:
+            if isinstance(item, Exception):
+                continue
+            _, events = item
+            for event in events:
+                yield event
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -808,7 +967,6 @@ class RecheckAgent(BaseAgent):
         state_hint = loc.get("admin1") or loc.get("name")
         tasks = []
 
-        # Global-tool rechecks use the raw loc
         if any(w in review_lower for w in ("weather", "wind", "forecast")):
             tasks.append(("weather", asyncio.to_thread(
                 get_weather_conditions,
@@ -820,7 +978,6 @@ class RecheckAgent(BaseAgent):
                 float(loc["latitude"]), float(loc["longitude"]), state_hint,
             )))
 
-        # Marine-tool rechecks use the marine loc
         if marine_loc is not None:
             m_lat = float(marine_loc["latitude"])
             m_lon = float(marine_loc["longitude"])

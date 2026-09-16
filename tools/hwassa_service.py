@@ -8,11 +8,16 @@ Severity:
     YELLOW  = Watch (monitor conditions)
     ORANGE  = Alert (be careful, restrictions likely)
 
+Long-period swells (>= 12 s) generate rip currents even at modest
+wave heights. This is parsed into a `rip_current_risk` flag so
+downstream reasoners and synthesis can surface the hazard.
+
 Source: https://samudra.incois.gov.in/incoismobileappdata/rest/incois/hwassalatestdata
 """
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import Any
 
@@ -79,6 +84,54 @@ def _matches_location(alert: dict, state_hint: str | None) -> bool:
     return hint in alert_state or alert_state in hint
 
 
+def _parse_swell_from_message(message: str) -> dict:
+    """
+    Extract structured swell fields from the INCOIS alert message.
+
+    Example messages:
+      "Swell waves in the range of 14.0 - 16.0 sec period with 0.7 - 0.9 m height"
+      "High waves in the range of 3.0 - 3.4 meters"
+
+    Returns a dict with swell_period_s_range, wave_height_m_range, and
+    a rip_current_risk flag if the period exceeds 12 seconds.
+    """
+    out: dict = {}
+    if not message:
+        return out
+
+    # Period: "14.0 - 16.0 sec period" or "14 - 16 seconds"
+    m = re.search(
+        r"(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(?:sec|s)\b",
+        message, flags=re.IGNORECASE,
+    )
+    if m:
+        out["swell_period_s_range"] = [float(m.group(1)), float(m.group(2))]
+
+    # Height: "0.7 - 0.9 m height" or "3.0 - 3.4 meters"
+    m = re.search(
+        r"(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(?:m\b|meters?)",
+        message, flags=re.IGNORECASE,
+    )
+    if m:
+        out["wave_height_m_range"] = [float(m.group(1)), float(m.group(2))]
+
+    # Rip current risk: long-period swell (>= 12 s) generates rip currents
+    # even at modest wave height.
+    if out.get("swell_period_s_range"):
+        max_period = max(out["swell_period_s_range"])
+        if max_period >= 12.0:
+            out["rip_current_risk"] = True
+            out["rip_current_note"] = (
+                f"Long-period swell ({out['swell_period_s_range'][0]:.0f}-"
+                f"{out['swell_period_s_range'][1]:.0f} s) can generate strong "
+                f"rip currents near beaches even though wave heights are "
+                f"modest. Swimmers and casual beachgoers should exercise "
+                f"caution."
+            )
+
+    return out
+
+
 def get_hwassa_alerts(
     latitude: float,
     longitude: float,
@@ -125,6 +178,9 @@ def get_hwassa_alerts(
         else "NONE"
     )
 
+    # Parse structured swell info from the top alert message
+    swell = _parse_swell_from_message(top_alert.get("Message") or "")
+
     return {
         "status": "OK",
         "source": "INCOIS HWA/SSA",
@@ -137,6 +193,7 @@ def get_hwassa_alerts(
         "state": top_alert.get("STATE"),
         "message": top_alert.get("Message"),
         "issue_date": top_alert.get("Issue Date"),
+        **swell,
         "all_alerts": [
             {
                 "kind": kind,
@@ -146,6 +203,7 @@ def get_hwassa_alerts(
                 "state": a.get("STATE"),
                 "message": a.get("Message"),
                 "issue_date": a.get("Issue Date"),
+                **_parse_swell_from_message(a.get("Message") or ""),
             }
             for kind, a in matched[:10]
         ],

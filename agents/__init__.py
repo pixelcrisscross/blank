@@ -1,32 +1,32 @@
 """
 Shared model factory for ORCA agents.
 
-Central place to configure the LLM backend so every agent uses the
-same model and options. Keeps `think=False` applied consistently.
+Uses llama3.2:3b — a non-reasoning model with native tool calling.
+No thinking mode exists, so no tokens are wasted on internal
+monologue. Fits entirely in 6 GB VRAM with room for KV cache.
 """
 from google.adk.models.lite_llm import LiteLlm
 
 
-# Prepend to every agent's instruction. qwen3's built-in switch to
-# disable the reasoning trace. Works regardless of whether the Ollama
-# version honors extra_body={"think": False}.
-ORCA_NO_THINK_PREFIX = "/no_think\n\n"
+# Kept for backwards compatibility with agents that import it.
+# llama3.2 has no reasoning trace, so this is now empty.
+ORCA_NO_THINK_PREFIX = ""
 
 
 def orca_model() -> LiteLlm:
     """
-    Local Ollama + qwen3:8b with thinking mode disabled.
+    Local Ollama + llama3.2:3b.
 
-    qwen3 is a reasoning model: by default it emits 1000-3000 tokens
-    of internal monologue before every answer. For an ADK workflow
-    with multiple agents per turn, that turns a 10-second query into
-    a 2-minute one.
+    llama3.2:3b:
+      - No internal monologue (unlike qwen3)
+      - Native tool calling support
+      - ~2.0 GB weights, fits 100% on GPU
+      - Reliable JSON output
 
-    Both `extra_body` (Ollama 0.6+) and the `/no_think` prefix
-    (agent instruction) are used to disable it.
+    Timeout 180 s — even a slow multi-turn reasoning call should
+    finish well under this on a 3B model.
     """
     return LiteLlm(
-        model="ollama_chat/qwen3:4b",
-        extra_body={"think": False},
-        timeout=60,
+        model="ollama_chat/llama3.2:3b",
+        timeout=180,
     )
