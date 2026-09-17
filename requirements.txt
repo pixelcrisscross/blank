@@ -1,6 +1,7 @@
-google-adk
+google-adk[extensions]
 litellm
 python-dotenv
+langdetect
 httpx
 pydantic
 requests

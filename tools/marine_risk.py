@@ -60,12 +60,13 @@ def calculate_marine_risk(
             )
 
     # Cyclone — always local since the API returns active systems.
-    if cyclone and cyclone.get("active_alerts"):
-        alerts = cyclone["active_alerts"]
-        blockers.append(
-            f"Active cyclone alert(s): {len(alerts)}. "
-            f"Check IMD for track and intensity."
-        )
+    if cyclone:
+        alerts = cyclone.get("active_alerts")
+        if isinstance(alerts, list) and alerts:
+            blockers.append(
+                f"Active cyclone alert(s): {len(alerts)}. "
+                f"Check IMD for track and intensity."
+            )
 
     # Tsunami — global, applies to the whole Indian coast.
     if tsunami and tsunami.get("threat_to_india"):

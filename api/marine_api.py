@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
@@ -32,27 +33,44 @@ from tools.coral_service import get_coral_bleaching_alert
 from tools.tide_service import get_tide_prediction
 from tools.bioluminescence import get_bioluminescence_forecast
 from tools.algal_bloom import get_algal_bloom_risk
+from tools.geofence import check_geofence
+from tools.route_service import sample_route_waypoints, summarise_route_risk, _weather_risk_label
+from tools.weather_service import get_weather_conditions
 
 
 app = FastAPI(
     title="ORCA Marine Data Gateway",
-    version="0.3.0",
+    version="0.4.0",
     description=(
         "Local gateway for Copernicus Marine numerical data, WMTS map "
         "layers, INCOIS PFZ advisories, NOAA coral alerts, local tide "
-        "predictions, bioluminescence forecasts, and algal-bloom risk."
+        "predictions, bioluminescence forecasts, algal-bloom risk, "
+        "maritime geofencing, and route safety assessment."
     ),
 )
 
 
+_DEFAULT_ORIGINS = [
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "http://127.0.0.1:7861",
+    "http://localhost:7861",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
+
+_cors_env = os.getenv("ORCA_CORS_ORIGINS", "")
+_cors_origins = (
+    [o.strip() for o in _cors_env.split(",") if o.strip()]
+    if _cors_env
+    else _DEFAULT_ORIGINS
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5500",
-        "http://localhost:5500",
-        "http://127.0.0.1:7861",
-        "http://localhost:7861",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -67,7 +85,7 @@ app.add_middleware(
 def root() -> dict[str, Any]:
     return {
         "service": "ORCA Marine Data Gateway",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "status": "online",
         "endpoints": {
             "health": "/health",
@@ -82,13 +100,17 @@ def root() -> dict[str, Any]:
             "orca_layers": "/marine/map/orca-layers",
             "map_config": "/marine/map/config/{parameter}",
 
-            # New domains
+            # Biological + environmental domains
             "pfz": "/marine/pfz",
             "pfz_geojson": "/marine/pfz/geojson",
             "coral": "/marine/coral",
             "tides": "/marine/tides",
             "bioluminescence": "/marine/bioluminescence",
             "algal_bloom": "/marine/algal-bloom",
+
+            # Phase 4 + Phase 6: Geofencing and route safety
+            "geofence": "/marine/geofence",
+            "route": "/marine/route",
         },
     }
 
@@ -388,3 +410,108 @@ def algal_bloom(
                 "message": str(exc),
             },
         )
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# GEOFENCE (Phase 4)
+# ═════════════════════════════════════════════════════════════════════════════
+
+@app.get("/marine/geofence")
+def geofence(
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
+) -> dict[str, Any]:
+    """
+    Check whether a location is inside or near a maritime boundary zone.
+
+    Zones include: IMBL (India–Sri Lanka), Marine Protected Areas,
+    EEZ approach buffers, and ecologically sensitive zones.
+    """
+    try:
+        return check_geofence(latitude, longitude)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "Geofence check failed",
+                "message": str(exc),
+            },
+        )
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ROUTE SAFETY (Phase 6)
+# ═════════════════════════════════════════════════════════════════════════════
+
+@app.get("/marine/route")
+def marine_route(
+    start_latitude: float = Query(..., ge=-90, le=90),
+    start_longitude: float = Query(..., ge=-180, le=180),
+    end_latitude: float = Query(..., ge=-90, le=90),
+    end_longitude: float = Query(..., ge=-180, le=180),
+    step_km: float = Query(25.0, gt=5, le=200,
+                           description="Waypoint spacing in km (default 25)."),
+) -> dict[str, Any]:
+    """
+    Evaluate route safety for a fishing vessel or coastal operator.
+
+    Samples waypoints every step_km along the great-circle route,
+    evaluates weather and geofence risk at each, and returns an
+    overall risk assessment with hazard segment details.
+    """
+    if start_latitude == end_latitude and start_longitude == end_longitude:
+        raise HTTPException(
+            status_code=400,
+            detail="Start and end points must be different.",
+        )
+    try:
+        waypoints = sample_route_waypoints(
+            start_latitude, start_longitude,
+            end_latitude, end_longitude,
+            step_km=step_km,
+            max_points=10,
+        )
+
+        # Evaluate each waypoint: weather + geofence
+        import asyncio
+
+        async def _eval_all():
+            from agents.route_agent import _evaluate_waypoint
+            results = await asyncio.gather(
+                *[_evaluate_waypoint(wp) for wp in waypoints],
+                return_exceptions=True,
+            )
+            clean = []
+            for i, res in enumerate(results):
+                if isinstance(res, Exception):
+                    clean.append({
+                        **waypoints[i],
+                        "risk_level": "UNKNOWN",
+                        "risk_reason": f"Evaluation error: {res}",
+                        "geofence_inside": False,
+                        "geofence_proximity": False,
+                    })
+                else:
+                    clean.append(res)
+            return clean
+
+        evaluated = asyncio.run(_eval_all())
+        summary = summarise_route_risk(evaluated)
+        summary["start"] = {
+            "latitude": start_latitude, "longitude": start_longitude
+        }
+        summary["end"] = {
+            "latitude": end_latitude, "longitude": end_longitude
+        }
+        summary["waypoints"] = evaluated
+        summary["status"] = "OK"
+        return summary
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "Route safety assessment failed",
+                "message": str(exc),
+            },
+        )

@@ -19,9 +19,14 @@ Do NOT write anything before or after the JSON.
 Return ONLY a single JSON object (no prose, no markdown fences) with these keys:
 
 - intent         : one of "marine_observations" | "marine_safety" |
-                   "fishery" | "weather" | "tourism" | "combined" | "meta"
+                   "fishery" | "weather" | "tourism" | "combined" |
+                   "route" | "meta"
 - location       : string or null
 - coordinates    : {"latitude": float, "longitude": float} or null
+- start_coords   : {"latitude": float, "longitude": float} or null
+                   (route queries only — start point)
+- end_coords     : {"latitude": float, "longitude": float} or null
+                   (route queries only — destination)
 - time_request   : "now" | "today" | "tonight" | "tomorrow" |
                    "tomorrow morning" | ... or null
 - domains_needed : list of any of:
@@ -32,12 +37,28 @@ Return ONLY a single JSON object (no prose, no markdown fences) with these keys:
 - needs_safety   : true/false
 - needs_fishery  : true/false
 - needs_tourism  : true/false
+- user_language  : the detected language code (e.g. "en", "hi", "ta")
+                   or null if unknown — DO NOT attempt to detect
+                   language; leave this as null always (it is filled
+                   by the language detection agent)
 
 META-QUERY RULE (highest priority):
 - If the user asks what ORCA can do, what data is available, what the
   system is, or any question about the platform itself:
   set intent to "meta", domains_needed to [], location to null,
   coordinates to null, time_request to null, and all needs_* to false.
+
+ROUTE RULE:
+- If the user asks about the safest route, best navigation path,
+  how to travel safely between two points, route planning, vessel
+  navigation, or similar:
+  set intent to "route".
+  Populate start_coords with the departure point and end_coords with
+  the destination (both as {latitude, longitude} if coordinates are
+  given, or null if only a place name is given and coordinates must
+  be resolved separately).
+  Set domains_needed to ["weather", "geofence"].
+  Set needs_safety to true.
 
 ALL-INFORMATION RULE:
 - If the user asks for "all information", "everything", "full data",

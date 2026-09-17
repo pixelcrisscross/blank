@@ -1,6 +1,7 @@
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 
+from agents import orca_model
 from agents.safety_agent import safety_agent
 from agents.fishery_agent import fishery_agent
 from agents.weather_agent import weather_agent

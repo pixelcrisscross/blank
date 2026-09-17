@@ -86,6 +86,40 @@ def _extract_location_from_plan(plan_raw) -> tuple[str, dict | None]:
     return (text[:120], None)
 
 
+def _parse_plan_json(plan_raw) -> dict:
+    """
+    Robustly parse the planner JSON output into a dict.
+
+    Handles:
+      - Clean JSON
+      - JSON wrapped in ```json fences
+      - JSON with leading prose
+      - Non-JSON fallback (returns empty dict)
+
+    Used by CapabilityAgent, DynamicDataCollectionAgent, and
+    ConditionalReasoningAgent so all three share the same
+    fence-stripping logic.
+    """
+    text = plan_raw if isinstance(plan_raw, str) else str(plan_raw)
+    text = text.strip()
+    # Strip markdown fences
+    text = re.sub(r"^```(?:json)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    # Find outermost JSON object if there is leading prose
+    candidate = text
+    if not candidate.startswith("{"):
+        m = re.search(r"\{.*\}", text, flags=re.DOTALL)
+        if m:
+            candidate = m.group(0)
+    try:
+        result = json.loads(candidate)
+        if isinstance(result, dict):
+            return result
+    except Exception:
+        pass
+    return {}
+
+
 # ═════════════════════════════════════════════════════════════════════
 # DOMAIN SUMMARISERS
 # ═════════════════════════════════════════════════════════════════════
@@ -484,10 +518,7 @@ class ResolveLocationAgent(BaseAgent):
 class CapabilityAgent(BaseAgent):
     async def _run_async_impl(self, ctx: InvocationContext):
         plan_raw = ctx.session.state.get(key("plan"), "{}")
-        try:
-            plan = json.loads(plan_raw) if isinstance(plan_raw, str) else plan_raw
-        except Exception:
-            plan = {}
+        plan = _parse_plan_json(plan_raw)
 
         if not isinstance(plan, dict) or plan.get("intent") != "meta":
             yield Event(
@@ -556,10 +587,7 @@ class DynamicDataCollectionAgent(BaseAgent):
 
     async def _run_async_impl(self, ctx: InvocationContext):
         plan_raw = ctx.session.state.get(key("plan"), "{}")
-        try:
-            plan = json.loads(plan_raw) if isinstance(plan_raw, str) else plan_raw
-        except Exception:
-            plan = {}
+        plan = _parse_plan_json(plan_raw)
 
         if isinstance(plan, dict) and plan.get("intent") == "meta":
             yield Event(
@@ -975,7 +1003,8 @@ class RecheckAgent(BaseAgent):
         if "imd" in review_lower or "port" in review_lower or "bulletin" in review_lower:
             tasks.append(("imd", asyncio.to_thread(
                 get_imd_coastal_bulletin,
-                float(loc["latitude"]), float(loc["longitude"]), state_hint,
+                float(loc["latitude"]), float(loc["longitude"]),
+                state_hint=state_hint,
             )))
 
         if marine_loc is not None:

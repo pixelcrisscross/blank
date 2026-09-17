@@ -366,7 +366,7 @@ def get_copernicus_marine_snapshot(latitude: float, longitude: float) -> dict[st
         result["provenance"].append({
             "parameter": "chlorophyll_a",
             "dataset_id": CHLOROPHYLL_DATASET,
-            "variables": ["chl"],
+            "variables": ["CHL"],
         })
 
     available = len(result["observations"])

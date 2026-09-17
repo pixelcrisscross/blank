@@ -6,6 +6,9 @@ STATE_KEYS = {
     "location": "orca_location",
     "marine_location": "orca_marine_location",
 
+    # Language detection (Phase 2)
+    "language": "orca_language",
+
     # Environmental data blocks
     "ocean": "orca_ocean_data",
     "weather": "orca_weather_data",
@@ -24,6 +27,9 @@ STATE_KEYS = {
     "osf_freshness": "orca_osf_freshness_data",
     "currents": "orca_currents_data",
 
+    # Route safety (Phase 3)
+    "route": "orca_route_data",
+
     # Risk
     "risk": "orca_risk_assessment",
 
@@ -33,6 +39,7 @@ STATE_KEYS = {
     "fishery_reasoning": "orca_fishery_reasoning",
     "safety_reasoning": "orca_safety_reasoning",
     "tourism_reasoning": "orca_tourism_reasoning",
+    "route_reasoning": "orca_route_reasoning",
 
     # Review + final
     "peer_review": "orca_peer_review",

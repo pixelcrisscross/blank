@@ -420,16 +420,6 @@ def get_imd_coastal_bulletin(
     storm_surge = parsed.get("storm_surge_warning") or ""
     tidal_wave = parsed.get("tidal_wave") or ""
 
-    def _is_active(value: str) -> bool:
-        v = (value or "").strip().upper()
-        if not v or v in ("/", "-", "N/A", "NA", "."):
-            return False
-        if "NIL" in v or "NO WARNING" in v or v == "NONE":
-            return False
-        if len(v) < 4:
-            return False
-        return True
-
     return {
         "status": "OK",
         "source": "IMD Coastal Weather Bulletin (HTML)",
