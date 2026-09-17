@@ -1,16 +1,11 @@
 """
 INCOIS Ocean Current Watch service.
 
-Fetches active ocean-current alerts from INCOIS SAMUDRA API (v2,
-language-aware endpoint).
+Fetches active ocean-current alerts from INCOIS SAMUDRA API (v2).
 
-Severity:
-    YELLOW  = Watch (monitor conditions)
-    ORANGE  = Alert (be careful, restrictions likely)
-
-The /en endpoint returns both raw and language-cleaned text. We use the
-`MessageLang` and `AlertLang` fields for display — they fix spacing and
-dash-normalisation bugs present in the raw fields.
+IMPORTANT: when no state_hint is available, this tool returns an
+empty result with status NO_STATE_HINT. It does NOT fall back to
+dumping India-wide alerts.
 
 Source:
     https://samudra.incois.gov.in/incoismobileappdata2/rest/incois/currentslatestdatalang/en
@@ -66,11 +61,11 @@ def _severity_order(color: str) -> int:
     return 0
 
 
-def _matches_location(alert: dict, state_hint: str | None) -> bool:
-    if not state_hint:
+def _state_matches(alert: dict, state_hint: str) -> bool:
+    alert_state = (alert.get("STATE") or "").upper().strip()
+    hint = state_hint.upper().strip()
+    if not alert_state or not hint:
         return False
-    alert_state = (alert.get("STATE") or "").upper()
-    hint = state_hint.upper()
     return hint in alert_state or alert_state in hint
 
 
@@ -79,6 +74,24 @@ def get_ocean_current_alerts(
     longitude: float,
     state_hint: str | None = None,
 ) -> dict[str, Any]:
+    """
+    Return active Ocean Current advisories for a state.
+
+    If no state_hint is provided, returns an empty result with status
+    NO_STATE_HINT.
+    """
+    if not state_hint or not state_hint.strip():
+        return {
+            "status": "NO_STATE_HINT",
+            "source": "INCOIS Ocean Current Watch",
+            "active_alerts": [],
+            "max_severity": "NONE",
+            "note": (
+                "No state hint available — cannot filter India-wide "
+                "current advisories to the query location."
+            ),
+        }
+
     try:
         data = _fetch_currents()
     except Exception as exc:
@@ -89,20 +102,16 @@ def get_ocean_current_alerts(
         }
 
     alerts = data.get("alerts") or []
-    matched = [a for a in alerts if _matches_location(a, state_hint)]
-
-    india_wide = False
-    if not matched and alerts:
-        matched = alerts
-        india_wide = True
+    matched = [a for a in alerts if _state_matches(a, state_hint)]
 
     if not matched:
         return {
             "status": "OK",
             "source": "INCOIS Ocean Current Watch",
+            "state_hint": state_hint,
             "active_alerts": [],
             "max_severity": "NONE",
-            "note": "No active Ocean Current advisories for this location.",
+            "note": f"No active Ocean Current advisories for {state_hint}.",
         }
 
     matched.sort(key=lambda a: _severity_order(a.get("Color")), reverse=True)
@@ -117,6 +126,7 @@ def get_ocean_current_alerts(
     return {
         "status": "OK",
         "source": "INCOIS Ocean Current Watch",
+        "state_hint": state_hint,
         "data_date": data.get("LatestCurrentsDate"),
         "active_alert_count": len(matched),
         "max_severity": severity,
@@ -137,11 +147,8 @@ def get_ocean_current_alerts(
             }
             for a in matched[:10]
         ],
-        "india_wide": india_wide,
         "note": (
             "Official INCOIS Ocean Current advisory. "
             "Orange = Alert (caution). Yellow = Watch (monitor)."
-            if not india_wide
-            else "No state-specific match; showing India-wide active alerts."
         ),
     }

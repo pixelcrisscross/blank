@@ -5,6 +5,10 @@ Three-layer design:
     Layer A — Hard blockers (official alerts → BLOCKED)
     Layer B — Environmental score (waves / wind / gust / precip / code)
     Layer C — Decision: BLOCKED if any blocker, else LOW → VERY HIGH
+
+Blocker guards:
+- Only local alerts can block. Alerts flagged india_wide are ignored.
+- Only state-matched alerts count. A state_hint is required.
 """
 from __future__ import annotations
 
@@ -14,6 +18,22 @@ def _num(value):
         return None if value is None else float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _is_local_alert(block: dict | None) -> bool:
+    """
+    Return True only if a hint-based tool returned a state-matched,
+    non-India-wide alert.
+    """
+    if not isinstance(block, dict):
+        return False
+    if block.get("status") != "OK":
+        return False
+    if block.get("india_wide"):
+        return False
+    if block.get("max_severity") in (None, "NONE", "UNKNOWN"):
+        return False
+    return True
 
 
 def calculate_marine_risk(
@@ -30,14 +50,16 @@ def calculate_marine_risk(
     reasons: list[str] = []
 
     # ── LAYER A — HARD BLOCKERS ──────────────────────────────────────
-    if hwassa and hwassa.get("status") == "OK":
+    # HWA / SSA — only local Orange alerts block.
+    if hwassa and _is_local_alert(hwassa):
         if hwassa.get("max_severity") == "ALERT":
             blockers.append(
                 f"INCOIS {hwassa.get('alert_type', 'alert')} for "
-                f"{hwassa.get('district')}: "
+                f"{hwassa.get('district')}, {hwassa.get('state')}: "
                 f"{(hwassa.get('message') or '')[:200]}"
             )
 
+    # Cyclone — always local since the API returns active systems.
     if cyclone and cyclone.get("active_alerts"):
         alerts = cyclone["active_alerts"]
         blockers.append(
@@ -45,6 +67,7 @@ def calculate_marine_risk(
             f"Check IMD for track and intensity."
         )
 
+    # Tsunami — global, applies to the whole Indian coast.
     if tsunami and tsunami.get("threat_to_india"):
         threat = tsunami.get("threat_events") or []
         if threat:
@@ -57,6 +80,7 @@ def calculate_marine_risk(
         else:
             blockers.append("Tsunami threat to India declared by INCOIS ITEWS.")
 
+    # Geofence — only if the point actually intersects a zone.
     if isinstance(geofence, dict) and geofence.get("inside_restricted_zone"):
         blockers.append("Location intersects a configured restricted zone.")
 
@@ -96,7 +120,8 @@ def calculate_marine_risk(
     if precipitation is not None and precipitation >= 10:
         score += 10; reasons.append("Heavy precipitation signal.")
 
-    if currents and currents.get("status") == "OK":
+    # Currents — only local advisories contribute.
+    if _is_local_alert(currents):
         if currents.get("max_severity") == "ALERT":
             score += 15
             reasons.append(
@@ -128,9 +153,8 @@ def calculate_marine_risk(
             "evaluated_parameters": evaluated,
             "decision_support_only": True,
             "warning": (
-                "One or more official hazards are active. Do not proceed "
-                "without checking authorities. Official warnings take "
-                "precedence over environmental model values."
+                "One or more official hazards are active for this "
+                "location. Do not proceed without checking authorities."
             ),
         }
 
