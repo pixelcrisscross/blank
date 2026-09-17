@@ -457,7 +457,7 @@ pre.code{
     <span class="pill" id="pill-adk"><span class="dot" id="dot-adk"></span>ADK <b id="adk-state">—</b></span>
     <span class="pill">Session <b id="hdr-session">—</b></span>
     <span class="pill">Elapsed <b id="hdr-elapsed">0.0s</b></span>
-    <span class="pill" title="Backend base URL"><input id="backend-url" value="http://127.0.0.1:8000"
+    <span class="pill" title="Backend base URL"><input id="backend-url" value="https://overshot-surfacing-discount.ngrok-free.dev/"
       style="background:transparent;border:0;outline:none;color:inherit;font:inherit;font-size:11px;width:160px;padding:0" /></span>
     <button class="btn sm ghost" id="btn-dev" title="Toggle Developer Mode">Dev</button>
   </div>
@@ -836,7 +836,7 @@ function toast(msg) {
 }
 
 function backendBase() {
-  return ($('backend-url').value || 'http://127.0.0.1:8000').replace(/\/+$/, '');
+  return ($('backend-url').value || 'https://overshot-surfacing-discount.ngrok-free.dev').replace(/\/+$/, '');
 }
 
 /* ── Health check ──────────────────────────────────────────────── */
