@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path                          # NEW
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response   # NEW: FileResponse
 
 from tools.copernicus_service import (
     get_copernicus_marine_snapshot,
@@ -33,14 +34,17 @@ from tools.tide_service import get_tide_prediction
 from tools.bioluminescence import get_bioluminescence_forecast
 from tools.algal_bloom import get_algal_bloom_risk
 
+from api.agent_api import router as orca_agent_router   # NEW
+
 
 app = FastAPI(
     title="ORCA Marine Data Gateway",
-    version="0.3.0",
+    version="0.4.0",                                     # bumped
     description=(
         "Local gateway for Copernicus Marine numerical data, WMTS map "
         "layers, INCOIS PFZ advisories, NOAA coral alerts, local tide "
-        "predictions, bioluminescence forecasts, and algal-bloom risk."
+        "predictions, bioluminescence forecasts, algal-bloom risk, and "
+        "the ORCA ADK agent event bridge."
     ),
 )
 
@@ -52,11 +56,36 @@ app.add_middleware(
         "http://localhost:5500",
         "http://127.0.0.1:7861",
         "http://localhost:7861",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8080",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "null",              # file:// origin
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# NEW: mount the ADK agent bridge (streams real ORCA events as SSE)
+app.include_router(orca_agent_router)
+
+
+# NEW: serve the standalone dashboard directly
+_DASHBOARD_PATH = Path(__file__).resolve().parent.parent / "orca_dashboard.html"
+
+
+@app.get("/dashboard", include_in_schema=False)
+def serve_dashboard() -> FileResponse:
+    if not _DASHBOARD_PATH.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"orca_dashboard.html not found at {_DASHBOARD_PATH}",
+        )
+    return FileResponse(_DASHBOARD_PATH, media_type="text/html")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -67,10 +96,14 @@ app.add_middleware(
 def root() -> dict[str, Any]:
     return {
         "service": "ORCA Marine Data Gateway",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "status": "online",
         "endpoints": {
             "health": "/health",
+            "dashboard": "/dashboard",                 # NEW
+            "agent_health": "/agent/health",           # NEW
+            "agent_session": "/agent/session",         # NEW
+            "agent_run_sse": "/agent/run",             # NEW
 
             # Copernicus point + grid
             "point": "/marine/point",
